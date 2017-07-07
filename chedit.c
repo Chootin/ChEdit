@@ -63,7 +63,7 @@ void tick_cursor(struct cursor *cur) {
 }
 
 char cursor_active_here(struct cursor *cur, int y, int x) {
-	return cur->highlight && cur->y == y && cur->x == x;
+	return cur->highlight && cur->y == y && cur->x + cur->horizontal_scroll == x;
 }
 
 struct line * get_line(struct document *doc, struct cursor *cur) {
@@ -75,8 +75,12 @@ void draw_text(struct document *doc, struct cursor *cur) {
 
 	for (int y = 0; y < doc->length - cur->vertical_scroll; y++) {
 		int draw_x = 0;
+		int start_x = 0;
+		if (y == cur->y + cur->vertical_scroll) {
+			start_x = cur->horizontal_scroll;
+		}
 		struct line *line = lines[y + cur->vertical_scroll];
-		for (int x = 0; x < line->length; x++) {
+		for (int x = start_x; x < line->length; x++) {
 			char ch = line->array[x];
 			if (cursor_active_here(cur, y, x)) {
 				standout();
@@ -93,7 +97,7 @@ void draw_text(struct document *doc, struct cursor *cur) {
 			standend();
 		}
 
-		if (cur->highlight && cur->y == y && cur->x == line->length) {
+		if (cur->highlight && cur->y == y && cur->x + cur->horizontal_scroll == line->length) {
 			standout();
 			mvaddch(y + 1, draw_x, ' ');
 			standend();
@@ -149,6 +153,8 @@ void increment_y(struct document *doc, struct cursor *cur) {
 void decrement_x(struct cursor *cur) {
 	if (cur->x > 0) {
 		cur->x--;
+	} else if (cur->horizontal_scroll > 0) {
+		cur->horizontal_scroll--;
 	}
 
 	reset_cursor_highlight(cur);
@@ -157,8 +163,12 @@ void decrement_x(struct cursor *cur) {
 void increment_x(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
 
-	if (cur->x < line->length) {
-		cur->x++;
+	if (cur->x + cur->horizontal_scroll < line->length) {
+		if (cur->x == cur->max_window_x) {
+			cur->horizontal_scroll++;
+		} else {
+			cur->x++;
+		}
 	}
 
 	reset_cursor_highlight(cur);
@@ -251,11 +261,11 @@ void insert_character(struct document *doc, struct cursor *cur, char ch) {
 
 	char *array = line->array;
 
-	for (int i = line->length - 1; i > cur->x; i--) {
+	for (int i = line->length - 1; i > cur->x + cur->horizontal_scroll; i--) {
 		array[i] = array[i - 1];
 	}
 
-	array[cur->x] = ch;
+	array[cur->x + cur->horizontal_scroll] = ch;
 }
 
 void insert_new_line(struct document *doc, struct cursor *cur, struct line *line) {
@@ -297,7 +307,6 @@ struct line * crop_line(struct document *doc, struct cursor *cur) {
 	}
 
 	line->length -= new_line->length;
-
 	return new_line;
 }
 
@@ -337,9 +346,11 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 			}
 			if (ch[2] == 72) {
 				cur->x = 0;
+				cur->horizontal_scroll = 0;
 			} else if (ch[2] == 70) {
 				struct line *line = get_line(doc, cur);
-				cur->x = line->length;
+				cur->x = cur->max_window_x;
+				cur->horizontal_scroll = line->length - cur->max_window_x;
 			}
 		}
 	} else {
@@ -505,14 +516,14 @@ int main(int argc, char *argv[]) {
 		process_text(doc, &cur, chars, length);
 
 		clear();
-		wclear(diag_win);
 		draw_title_bar(max_y, max_x);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[0]);
 		draw_text(doc, &cur);
 
 		tick_cursor(&cur);
 
 		refresh();
+		wclear(diag_win);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[0]);
 		wrefresh(diag_win);
 
 		length = 0;
