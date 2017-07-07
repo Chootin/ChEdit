@@ -473,7 +473,7 @@ int main(int argc, char *argv[]) {
 	getcwd(savepath, 1024);
 
 	if (argc != 2) {
-		printf("Invalid arguments! Run: cedit <file to edit>\n");
+		printf("Invalid arguments! Run: chedit <file to edit>\n");
 		return 1;
 	} else {
 		savefile = argv[1];
