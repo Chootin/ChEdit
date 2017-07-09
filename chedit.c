@@ -30,11 +30,12 @@ struct cursor {
 	int highlight_tick;
 };
 
-void curses_setup() {
-	initscr();
+WINDOW * curses_setup() {
+	WINDOW *root = initscr();
 	noecho();
 	curs_set(0);
 	nodelay(stdscr, true);
+	return root;
 }
 
 void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x, char ch) {
@@ -517,7 +518,8 @@ int main(int argc, char *argv[]) {
 
 	struct timespec delay;
 	delay.tv_sec = 0;
-	delay.tv_nsec = 16300000L;
+	//delay.tv_nsec = 16300000L;
+	delay.tv_nsec = 32600000L;
 
 	WINDOW *diag_win;
 	int max_x = 0, max_y = 0, file_length = 0;
@@ -539,7 +541,7 @@ int main(int argc, char *argv[]) {
 
 	char *file_buffer = read_file(directory, &file_length);
 
-	curses_setup();
+	WINDOW *root = curses_setup();
 
 	getmaxyx(stdscr, max_y, max_x);
 
@@ -559,16 +561,17 @@ int main(int argc, char *argv[]) {
 		}
 		process_text(doc, &cur, chars, length);
 
-		clear();
+		wclear(root);
 		draw_title_bar(max_y, max_x);
 		draw_text(doc, &cur);
 
 		tick_cursor(&cur);
 
-		refresh();
-		//wclear(diag_win);
-		//draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[5]);
-		//wrefresh(diag_win);
+		wnoutrefresh(root);
+		wclear(diag_win);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, length);
+		wnoutrefresh(diag_win);
+		doupdate();
 
 		length = 0;
 
