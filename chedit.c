@@ -269,7 +269,6 @@ void delete_character(struct document *doc, struct cursor *cur) {
 		for (int i = cur->x; i < line->length; i++) {
 			array[i] = array[i + 1];
 		}
-		//array[line->length] = 0;
 		line->length--;
 	} else if (cur->y < doc->length - 1) {
 		struct line *line = get_line(doc, cur);
