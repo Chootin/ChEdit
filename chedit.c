@@ -169,7 +169,7 @@ void increment_x(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll < line->length) {
-		if (cur->x == cur->max_window_x) {
+		if (cur->x >= cur->max_window_x) {
 			cur->horizontal_scroll++;
 		} else {
 			cur->x++;
@@ -186,7 +186,7 @@ char get_cursor_char(struct document *doc, struct cursor *cur) {
 
 void decrement_x_word(struct document *doc, struct cursor *cur) {
 	decrement_x(cur);
-	while (cur->x > 0) {
+	while (cur->x > 0 || cur->horizontal_scroll > 0) {
 		decrement_x(cur);
 		char ch = get_cursor_char(doc, cur);
 		if (ch == ' ' || ch == '\t') {
