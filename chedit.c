@@ -76,9 +76,9 @@ void draw_text(struct document *doc, struct cursor *cur) {
 	for (int y = 0; y < doc->length - cur->vertical_scroll; y++) {
 		int draw_x = 0;
 		int start_x = 0;
-		if (y == cur->y + cur->vertical_scroll) {
+		//if (y == cur->y + cur->vertical_scroll + 1) {
 			start_x = cur->horizontal_scroll;
-		}
+		//}
 		struct line *line = lines[y + cur->vertical_scroll];
 		for (int x = start_x; x < line->length; x++) {
 			char ch = line->array[x];
@@ -110,11 +110,29 @@ void reset_cursor_highlight(struct cursor *cur) {
 	cur->highlight_tick = 0;
 }
 
+/*int get_line_screen_width(struct line * line) {
+	int width = 0;
+	for (int i = 0; i < line->length; i++) {
+		if (line->array[i] == '\t') {
+			width += TAB_WIDTH;
+		} else {
+			width++;
+		}
+	}
+
+	return width;
+}*/
+
 void seek_line_end(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
 
-	if (cur->x > line->length) {
-		cur->x = line->length;
+	if (cur->x + cur->horizontal_scroll > line->length) {
+		if (line->length > cur->max_window_x) {
+			cur->horizontal_scroll = line->length - cur->max_window_x;
+			cur->x = line->length - cur->horizontal_scroll;
+		} else {
+			cur->x = line->length;
+		}
 		if (cur->x < 0) {
 			cur->x = 0;
 		}
@@ -134,7 +152,6 @@ void decrement_y(struct document *doc, struct cursor *cur) {
 }
 
 void increment_y(struct document *doc, struct cursor *cur) {
-	//cur->y < cur->max_window_y
 	if (cur->y + 1 < doc->length) {
 		if (cur->y < cur->max_window_y) {
 			cur->y++;
@@ -347,10 +364,12 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 			if (ch[2] == 72) {
 				cur->x = 0;
 				cur->horizontal_scroll = 0;
+				reset_cursor_highlight(cur);
 			} else if (ch[2] == 70) {
 				struct line *line = get_line(doc, cur);
 				cur->x = cur->max_window_x;
 				cur->horizontal_scroll = line->length - cur->max_window_x;
+				reset_cursor_highlight(cur);
 			}
 		}
 	} else {
