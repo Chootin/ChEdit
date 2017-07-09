@@ -269,7 +269,7 @@ void delete_character(struct document *doc, struct cursor *cur) {
 		for (int i = cur->x; i < line->length; i++) {
 			array[i] = array[i + 1];
 		}
-		array[line->length] = 0;
+		//array[line->length] = 0;
 		line->length--;
 	} else if (cur->y < doc->length - 1) {
 		struct line *line = get_line(doc, cur);
@@ -601,7 +601,7 @@ int main(int argc, char *argv[]) {
 
 		wnoutrefresh(root);
 		wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[1]);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[0]);
 		wnoutrefresh(diag_win);
 		doupdate();
 
