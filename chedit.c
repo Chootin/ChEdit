@@ -601,7 +601,7 @@ int main(int argc, char *argv[]) {
 
 		wnoutrefresh(root);
 		wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[5]);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[1]);
 		wnoutrefresh(diag_win);
 		doupdate();
 
