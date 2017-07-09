@@ -156,6 +156,29 @@ void increment_y(struct document *doc, struct cursor *cur) {
 	reset_cursor_highlight(cur);
 }
 
+void decrement_y_para(struct document *doc, struct cursor *cur) {
+	decrement_y(doc, cur);
+	for (int i = cur->y + cur->vertical_scroll - 1; i >= 0; i--) {
+		if (doc->lines[i]->length > 0) {
+			decrement_y(doc, cur);
+		} else {
+			break;
+		}
+	}
+}
+
+void increment_y_para(struct document *doc, struct cursor *cur) {
+	increment_y(doc, cur);
+	for (int i = cur->y + cur->vertical_scroll; i < doc->length; i++) {
+		if (doc->lines[i]->length > 0) {
+			increment_y(doc, cur);
+		} else {
+			break;
+		}
+	}
+	increment_y(doc, cur);
+}
+
 void decrement_x(struct cursor *cur) {
 	if (cur->x > 0) {
 		cur->x--;
@@ -375,10 +398,19 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 					cur->x = line->length - cur->horizontal_scroll;
 				}
 			} else if (ch[2] == 49) {
-				if (ch[5] == 68) {
-					decrement_x_word(doc, cur);
-				} else if (ch[5] == 67) {
-					increment_x_word(doc, cur);
+				switch (ch[5]) {
+					case 68:
+						decrement_x_word(doc, cur);
+						break;
+					case 67:
+						increment_x_word(doc, cur);
+						break;
+					case 65:
+						decrement_y_para(doc, cur);
+						break;
+					case 66:
+						increment_y_para(doc, cur);
+						break;
 				}
 			} else {
 				switch (ch[2]) {
@@ -569,7 +601,7 @@ int main(int argc, char *argv[]) {
 
 		wnoutrefresh(root);
 		wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, length);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[5]);
 		wnoutrefresh(diag_win);
 		doupdate();
 
