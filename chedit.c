@@ -198,7 +198,6 @@ void decrement_x_word(struct document *doc, struct cursor *cur) {
 
 void increment_x_word(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
-	increment_x(doc, cur);
 	while (cur->x + cur->horizontal_scroll < line->length) {
 		increment_x(doc, cur);
 		char ch = get_cursor_char(doc, cur);
@@ -366,12 +365,14 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 			} else if (ch[2] == 72) {
 				cur->x = 0;
 				cur->horizontal_scroll = 0;
-				reset_cursor_highlight(cur);
 			} else if (ch[2] == 70) {
 				struct line *line = get_line(doc, cur);
-				cur->x = cur->max_window_x;
-				cur->horizontal_scroll = line->length - cur->max_window_x;
-				reset_cursor_highlight(cur);
+				if (line->length < cur->max_window_x) {
+					cur->x = line->length;
+				} else {
+					cur->horizontal_scroll = line->length - cur->max_window_x;
+					cur->x = line->length - cur->horizontal_scroll;
+				}
 			} else if (ch[2] == 49) {
 				if (ch[5] == 68) {
 					decrement_x_word(doc, cur);
@@ -394,6 +395,7 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 						break;
 				}
 			}
+			reset_cursor_highlight(cur);
 		}
 	} else {
 		if (ch[0] == 9) { //Tab key
@@ -564,9 +566,9 @@ int main(int argc, char *argv[]) {
 		tick_cursor(&cur);
 
 		refresh();
-		wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[5]);
-		wrefresh(diag_win);
+		//wclear(diag_win);
+		//draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[5]);
+		//wrefresh(diag_win);
 
 		length = 0;
 
