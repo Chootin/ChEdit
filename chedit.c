@@ -7,6 +7,7 @@
 #define DEBUG_LINES (5)
 #define DEBUG_COLUMNS (12)
 #define TAB_WIDTH (4)
+#define CHARACTER_INPUT_ARR_LENGTH (6)
 
 struct line {
 	char *array;
@@ -110,19 +111,6 @@ void reset_cursor_highlight(struct cursor *cur) {
 	cur->highlight_tick = 0;
 }
 
-/*int get_line_screen_width(struct line * line) {
-	int width = 0;
-	for (int i = 0; i < line->length; i++) {
-		if (line->array[i] == '\t') {
-			width += TAB_WIDTH;
-		} else {
-			width++;
-		}
-	}
-
-	return width;
-}*/
-
 void seek_line_end(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
 
@@ -189,6 +177,36 @@ void increment_x(struct document *doc, struct cursor *cur) {
 	}
 
 	reset_cursor_highlight(cur);
+}
+
+char get_cursor_char(struct document *doc, struct cursor *cur) {
+	struct line *line = get_line(doc, cur);
+	return line->array[cur->x + cur->horizontal_scroll];
+}
+
+void decrement_x_word(struct document *doc, struct cursor *cur) {
+	decrement_x(cur);
+	while (cur->x > 0) {
+		decrement_x(cur);
+		char ch = get_cursor_char(doc, cur);
+		if (ch == ' ' || ch == '\t') {
+			increment_x(doc, cur);
+			break;
+		}
+	}
+}
+
+void increment_x_word(struct document *doc, struct cursor *cur) {
+	struct line *line = get_line(doc, cur);
+	increment_x(doc, cur);
+	while (cur->x + cur->horizontal_scroll < line->length) {
+		increment_x(doc, cur);
+		char ch = get_cursor_char(doc, cur);
+		if (ch == ' ' || ch == '\t') {
+			increment_x(doc, cur);
+			break;
+		}
+	}
 }
 
 void delete_line(struct document *doc, struct cursor *cur) {
@@ -345,6 +363,21 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 					cur->y = cur->max_window_y;
 				}
 				seek_line_end(doc, cur);
+			} else if (ch[2] == 72) {
+				cur->x = 0;
+				cur->horizontal_scroll = 0;
+				reset_cursor_highlight(cur);
+			} else if (ch[2] == 70) {
+				struct line *line = get_line(doc, cur);
+				cur->x = cur->max_window_x;
+				cur->horizontal_scroll = line->length - cur->max_window_x;
+				reset_cursor_highlight(cur);
+			} else if (ch[2] == 49) {
+				if (ch[5] == 68) {
+					decrement_x_word(doc, cur);
+				} else if (ch[5] == 67) {
+					increment_x_word(doc, cur);
+				}
 			} else {
 				switch (ch[2]) {
 					case 'A': //UP
@@ -360,16 +393,6 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 						decrement_x(cur);
 						break;
 				}
-			}
-			if (ch[2] == 72) {
-				cur->x = 0;
-				cur->horizontal_scroll = 0;
-				reset_cursor_highlight(cur);
-			} else if (ch[2] == 70) {
-				struct line *line = get_line(doc, cur);
-				cur->x = cur->max_window_x;
-				cur->horizontal_scroll = line->length - cur->max_window_x;
-				reset_cursor_highlight(cur);
 			}
 		}
 	} else {
@@ -497,7 +520,7 @@ int main(int argc, char *argv[]) {
 	WINDOW *diag_win;
 	int max_x = 0, max_y = 0, file_length = 0;
 	char ch = -1;
-	char *chars = (char *) malloc(5 * sizeof(char));
+	char *chars = (char *) malloc(CHARACTER_INPUT_ARR_LENGTH * sizeof(char));
 	int length = 0;
 
 	getcwd(savepath, 1024);
@@ -542,13 +565,13 @@ int main(int argc, char *argv[]) {
 
 		refresh();
 		wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[0]);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[5]);
 		wrefresh(diag_win);
 
 		length = 0;
 
 		ch = getch();
-		while (ch != -1 && length < 5) {
+		while (ch != -1 && length < CHARACTER_INPUT_ARR_LENGTH) {
 			chars[length++] = ch;
 			ch = getch();
 		}
