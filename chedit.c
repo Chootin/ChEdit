@@ -264,13 +264,13 @@ void append_line(struct line *line, struct line *append) {
 
 void delete_character(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
-	if (line->length > 0 && cur->x < line->length) {
+	if (line->length > 0 && cur->x + cur->horizontal_scroll < line->length) {
 		char *array = line->array; 
-		for (int i = cur->x; i < line->length; i++) {
+		for (int i = cur->x + cur->horizontal_scroll; i < line->length; i++) {
 			array[i] = array[i + 1];
 		}
 		line->length--;
-	} else if (cur->y < doc->length - 1) {
+	} else if (cur->y + cur->vertical_scroll < doc->length - 1) {
 		struct line *line = get_line(doc, cur);
 		struct line *next_line = doc->lines[cur->y + cur->vertical_scroll + 1];
 		append_line(line, next_line);
@@ -281,8 +281,8 @@ void delete_character(struct document *doc, struct cursor *cur) {
 }
 
 void erase_character(struct document *doc, struct cursor *cur) {
-	if (cur->x == 0) {
-		if (cur->y > 0) {
+	if (cur->x + cur->horizontal_scroll == 0) {
+		if (cur->y + cur->vertical_scroll > 0) {
 			struct line *line = get_line(doc, cur);
 			struct line *last_line = doc->lines[cur->y + cur->vertical_scroll - 1];
 			int new_cur_x = last_line->length;
@@ -297,6 +297,19 @@ void erase_character(struct document *doc, struct cursor *cur) {
 		decrement_x(cur);
 		delete_character(doc, cur);
 	}
+}
+
+void erase_word(struct document *doc, struct cursor *cur) {
+	struct line *line = get_line(doc, cur);
+	for (int i = cur->x + cur->horizontal_scroll - 1; i > 0; i--) {
+		char ch = line->array[i];
+		if (ch == ' ' || ch == '\t') {
+			break;
+		} else {
+			erase_character(doc, cur);
+		}
+	}
+	erase_character(doc, cur);
 }
 
 void increase_line_length(struct line *line, int increase) {
@@ -428,6 +441,8 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 				}
 			}
 			reset_cursor_highlight(cur);
+		} else if (ch[1] == 127) {
+			erase_word(doc, cur);
 		}
 	} else {
 		if (ch[0] == 9) { //Tab key
@@ -600,7 +615,7 @@ int main(int argc, char *argv[]) {
 
 		wnoutrefresh(root);
 		wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[0]);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[1]);
 		wnoutrefresh(diag_win);
 		doupdate();
 

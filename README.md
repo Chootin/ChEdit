@@ -15,3 +15,5 @@ Find and Replace
 Search
 
 Line numbers - these should be in standout
+
+Scroll with scroll wheel
