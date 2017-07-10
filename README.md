@@ -1,5 +1,7 @@
 # ChEdit - The best text editor available*
 
+![Alt text](ChEdit_screenshot.png?raw=true "ChEdit Screenshot")
+
 # But why?
 ChEdit aims to behave like a modern text editor under a terminal.
 
@@ -22,6 +24,8 @@ End - go to end of line
 
 CTRL + c - close ChEdit
 
+Line numbers!
+
 # Plans
 Shift + arrow keys to select test
 
@@ -31,5 +35,7 @@ Find and Replace
 
 Scroll with scroll wheel
 
+# Build Instructions
+Run ./build.sh chedit
 
 *probably not actually.

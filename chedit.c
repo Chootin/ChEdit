@@ -8,7 +8,7 @@
 #define DEBUG_COLUMNS (12)
 #define TAB_WIDTH (4)
 #define CHARACTER_INPUT_ARR_LENGTH (6)
-#define LINE_NUMBER_WIDTH (3)
+#define LINE_NUMBER_WIDTH (4)
 
 struct line {
 	char *array;
@@ -46,10 +46,10 @@ void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x,
 	mvwprintw(diag_win, 4, 0, "ch: %d", ch);
 }
 
-void draw_title_bar(WINDOW *window, int max_x) {
+void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile) {
 	wstandout(window);
 	mvwhline(window, 0, 0, ' ', max_x);
-	mvwprintw(window, 0, max_x / 2 - 3, "ChEdit");
+	mvwprintw(window, 0, LINE_NUMBER_WIDTH, "ChEdit: %s/%s", savepath, savefile);
 	wstandend(window);
 }
 
@@ -521,7 +521,7 @@ char * read_file(char *directory, int *length_of_file) {
 		file_buffer[index] = 0;
 	} else {
 		*length_of_file = 0;
-		file_buffer = (char *) malloc(*length_of_file *	 sizeof(char));
+		file_buffer = (char *) malloc(*length_of_file * sizeof(char));
 	}
 
 	return file_buffer;
@@ -573,7 +573,7 @@ struct document * convert_to_document(char *file_buffer, int file_length) {
 void draw_line_numbers(WINDOW *window, struct cursor *cur) {
 	wstandout(window);
 	for (int i = 0; i <= cur->max_window_y; i++) {
-		mvwprintw(window, i, 0, "%03d", cur->vertical_scroll + i + 1);
+		mvwprintw(window, i, 0, "%04d", cur->vertical_scroll + i + 1);
 	}
 	wstandend(window);
 }
@@ -636,16 +636,16 @@ int main(int argc, char *argv[]) {
 		wnoutrefresh(root);
 
 		wclear(title_bar);
-		draw_title_bar(title_bar, max_x);
+		draw_title_bar(title_bar, max_x, savepath, savefile);
 		wnoutrefresh(title_bar);
 
 		wclear(line_numbers);
 		draw_line_numbers(line_numbers, &cur);
 		wnoutrefresh(line_numbers);
 
-		wclear(diag_win);
+		/*wclear(diag_win);
 		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[0]);
-		wnoutrefresh(diag_win);
+		wnoutrefresh(diag_win);*/
 		doupdate();
 
 		length = 0;
