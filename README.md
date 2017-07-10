@@ -26,6 +26,8 @@ CTRL + c - close ChEdit
 
 Line numbers!
 
+CTRL + g - move cursor to line number
+
 # Plans
 Shift + arrow keys to select test
 

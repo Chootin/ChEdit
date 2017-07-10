@@ -23,6 +23,9 @@ struct document {
 struct cursor {
 	int y;
 	int x;
+	int select_y;
+	int select_x;
+	int selection;
 	int vertical_scroll;
 	int horizontal_scroll;
 	int max_window_y;
@@ -133,6 +136,7 @@ void seek_line_end(struct document *doc, struct cursor *cur) {
 			cur->x = line->length - cur->horizontal_scroll;
 		} else {
 			cur->x = line->length;
+			cur->horizontal_scroll = 0;
 		}
 		if (cur->x < 0) {
 			cur->x = 0;
@@ -191,7 +195,7 @@ void increment_y_para(struct document *doc, struct cursor *cur) {
 	increment_y(doc, cur);
 }
 
-void decrement_x(struct cursor *cur) {
+void decrement_x(struct cursor *cur, char shift) {
 	if (cur->x > 0) {
 		cur->x--;
 	} else if (cur->horizontal_scroll > 0) {
@@ -201,7 +205,7 @@ void decrement_x(struct cursor *cur) {
 	reset_cursor_highlight(cur);
 }
 
-void increment_x(struct document *doc, struct cursor *cur) {
+void increment_x(struct document *doc, struct cursor *cur, char shift) {
 	struct line *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll < line->length) {
@@ -221,12 +225,12 @@ char get_cursor_char(struct document *doc, struct cursor *cur) {
 }
 
 void decrement_x_word(struct document *doc, struct cursor *cur) {
-	decrement_x(cur);
+	decrement_x(cur, FALSE);
 	while (cur->x > 0 || cur->horizontal_scroll > 0) {
-		decrement_x(cur);
+		decrement_x(cur, FALSE);
 		char ch = get_cursor_char(doc, cur);
 		if (ch == ' ' || ch == '\t') {
-			increment_x(doc, cur);
+			increment_x(doc, cur, FALSE);
 			break;
 		}
 	}
@@ -235,10 +239,10 @@ void decrement_x_word(struct document *doc, struct cursor *cur) {
 void increment_x_word(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
 	while (cur->x + cur->horizontal_scroll < line->length) {
-		increment_x(doc, cur);
+		increment_x(doc, cur, FALSE);
 		char ch = get_cursor_char(doc, cur);
 		if (ch == ' ' || ch == '\t') {
-			increment_x(doc, cur);
+			increment_x(doc, cur, FALSE);
 			break;
 		}
 	}
@@ -306,7 +310,7 @@ void erase_character(struct document *doc, struct cursor *cur) {
 			reset_cursor_highlight(cur);
 		}
 	} else {
-		decrement_x(cur);
+		decrement_x(cur, FALSE);
 		delete_character(doc, cur);
 	}
 }
@@ -422,19 +426,31 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 					cur->x = line->length - cur->horizontal_scroll;
 				}
 			} else if (ch[2] == 49) {
-				switch (ch[5]) {
-					case 68:
-						decrement_x_word(doc, cur);
-						break;
-					case 67:
-						increment_x_word(doc, cur);
-						break;
-					case 65:
-						decrement_y_para(doc, cur);
-						break;
-					case 66:
-						increment_y_para(doc, cur);
-						break;
+				if (ch[4] == 50) {
+					//Shift + arrows
+					switch(ch[5]) {
+						case 68:
+							decrement_x(cur, TRUE);
+							break;
+						case 67:
+							increment_x(doc, cur, TRUE);
+							break;
+					}
+				} else {
+					switch (ch[5]) {
+						case 68:
+							decrement_x_word(doc, cur);
+							break;
+						case 67:
+							increment_x_word(doc, cur);
+							break;
+						case 65:
+							decrement_y_para(doc, cur);
+							break;
+						case 66:
+							increment_y_para(doc, cur);
+							break;
+					}
 				}
 			} else {
 				switch (ch[2]) {
@@ -445,10 +461,10 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 						increment_y(doc, cur);
 						break;
 					case 'C': //RIGHT
-						increment_x(doc, cur);
+						increment_x(doc, cur, FALSE);
 						break;
 					case 'D': //LEFT
-						decrement_x(cur);
+						decrement_x(cur, FALSE);
 						break;
 				}
 			}
@@ -459,7 +475,7 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 	} else {
 		if (ch[0] == 9) { //Tab key
 			insert_character(doc, cur, '\t');
-			increment_x(doc, cur);
+			increment_x(doc, cur, FALSE);
 		} else if (ch[0] == 8 || ch[0] == 127) { //Backspace
 			erase_character(doc, cur);
 		} else if (ch[0] == '\n' || ch[0] == '\r') {
@@ -470,7 +486,7 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 			cur->x = 0;
 		} else if (ch[0] >= 32 && ch[0] <= 126) {
 			insert_character(doc, cur, ch[0]);
-			increment_x(doc, cur);
+			increment_x(doc, cur, FALSE);
 		}
 	}
 }
@@ -578,6 +594,37 @@ void draw_line_numbers(WINDOW *window, struct cursor *cur) {
 	wstandend(window);
 }
 
+void goto_line(struct document *doc, struct cursor *cur) {
+	WINDOW *line_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, LINE_NUMBER_WIDTH);
+	char *chars = (char *) malloc(6 * sizeof(char));
+	int index = 0;
+	wclear(line_win);
+	wstandout(line_win);
+	mvwhline(line_win, 0, 0, ' ', cur->max_window_x);
+	mvwprintw(line_win, 0, 0, " GOTO: ");
+	wrefresh(line_win);
+	while (TRUE) {
+		char ch = getch();
+		if (ch != '\n') {
+			if (index <= 5 && ch != -1 && ch >= '0' && ch <= '9') {
+				mvwaddch(line_win, 0, 7 + index, ch);
+				wrefresh(line_win);
+				chars[index++] = ch;
+			}
+		} else {
+			break;
+		}
+	}
+	wstandend(line_win);
+
+	int line_number = atoi(chars);
+	if (line_number > doc->length) {
+		line_number = doc->length - 1;
+	}
+	cur->y = 0;
+	cur->vertical_scroll = line_number - 1;
+}
+
 int main(int argc, char *argv[]) {
 	char *savefile;
 	char savepath[1024];
@@ -618,14 +665,18 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 
-	struct cursor cur = {0, 0, 0, 0, max_y - 2, max_x - 1 - LINE_NUMBER_WIDTH, 1, 0};
+	struct cursor cur = {0, 0, 0, 0, 0, 0, 0, max_y - 2, max_x - 1 - LINE_NUMBER_WIDTH, 1, 0};
 
 	struct document *doc = convert_to_document(file_buffer, file_length);
 
 	while (1) {
 		if (chars[0] == 23) { //CTRL+w
 			break;
+		} else if (chars[0] == 7) { //CTRL+g
+			goto_line(doc, &cur);
+			chars[0] = -1;
 		}
+
 		process_text(doc, &cur, chars, length);		
 
 		wclear(root);
@@ -644,7 +695,7 @@ int main(int argc, char *argv[]) {
 		wnoutrefresh(line_numbers);
 
 		/*wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[0]);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[1]);
 		wnoutrefresh(diag_win);*/
 		doupdate();
 
