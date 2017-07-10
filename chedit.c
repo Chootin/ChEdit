@@ -72,16 +72,28 @@ struct line * get_line(struct document *doc, struct cursor *cur) {
 	return doc->lines[cur->y + cur->vertical_scroll];
 }
 
+int get_tab_offset(struct document *doc, struct cursor *cur) {
+	struct line *line = get_line(doc, cur);
+	int tab_offset = 0;
+	for (int x = 0; x < cur->x + cur->horizontal_scroll; x++) {
+		if (line->array[x] == '\t') {
+			tab_offset += TAB_WIDTH - 1;
+		}
+	}
+	return tab_offset;
+}
+
 void draw_text(struct document *doc, struct cursor *cur) {
 	struct line **lines = doc->lines;
 
 	for (int y = 0; y < doc->length - cur->vertical_scroll; y++) {
 		int draw_x = 0;
 		int start_x = 0;
-		//if (y == cur->y + cur->vertical_scroll + 1) {
-			start_x = cur->horizontal_scroll;
-		//}
+		int tab_offset = 0;
 		struct line *line = lines[y + cur->vertical_scroll];
+		if (y == cur->y) {
+			start_x = cur->horizontal_scroll;
+		}
 		for (int x = start_x; x < line->length; x++) {
 			char ch = line->array[x];
 			if (cursor_active_here(cur, y, x)) {
@@ -89,7 +101,7 @@ void draw_text(struct document *doc, struct cursor *cur) {
 			}
 			if (ch == '\t') {
 				for (int i = 0; i < TAB_WIDTH; i++) {
-					mvaddch(y + 1, draw_x, ' ');
+					mvaddch(y + 1, draw_x + tab_offset, ' ');
 					draw_x++;
 				}
 			} else {
@@ -193,7 +205,7 @@ void increment_x(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll < line->length) {
-		if (cur->x >= cur->max_window_x) {
+		if (cur->x + get_tab_offset(doc, cur) >= cur->max_window_x) {
 			cur->horizontal_scroll++;
 		} else {
 			cur->x++;
