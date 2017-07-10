@@ -8,6 +8,7 @@
 #define DEBUG_COLUMNS (12)
 #define TAB_WIDTH (4)
 #define CHARACTER_INPUT_ARR_LENGTH (6)
+#define LINE_NUMBER_WIDTH (3)
 
 struct line {
 	char *array;
@@ -30,12 +31,11 @@ struct cursor {
 	int highlight_tick;
 };
 
-WINDOW * curses_setup() {
-	WINDOW *root = initscr();
+void curses_setup() {
+	initscr();
 	noecho();
 	curs_set(0);
 	nodelay(stdscr, true);
-	return root;
 }
 
 void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x, char ch) {
@@ -46,11 +46,11 @@ void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x,
 	mvwprintw(diag_win, 4, 0, "ch: %d", ch);
 }
 
-void draw_title_bar(int max_y, int max_x) {
-	standout();
-	mvhline(0, 0, ' ', max_x);
-	mvprintw(0, max_x / 2 - 3, "ChEdit");
-	standend();
+void draw_title_bar(WINDOW *window, int max_x) {
+	wstandout(window);
+	mvwhline(window, 0, 0, ' ', max_x);
+	mvwprintw(window, 0, max_x / 2 - 3, "ChEdit");
+	wstandend(window);
 }
 
 void tick_cursor(struct cursor *cur) {
@@ -83,7 +83,7 @@ int get_tab_offset(struct document *doc, struct cursor *cur) {
 	return tab_offset;
 }
 
-void draw_text(struct document *doc, struct cursor *cur) {
+void draw_text(WINDOW *window, struct document *doc, struct cursor *cur) {
 	struct line **lines = doc->lines;
 
 	for (int y = 0; y < doc->length - cur->vertical_scroll; y++) {
@@ -97,24 +97,24 @@ void draw_text(struct document *doc, struct cursor *cur) {
 		for (int x = start_x; x < line->length; x++) {
 			char ch = line->array[x];
 			if (cursor_active_here(cur, y, x)) {
-				standout();
+				wstandout(window);
 			}
 			if (ch == '\t') {
 				for (int i = 0; i < TAB_WIDTH; i++) {
-					mvaddch(y + 1, draw_x + tab_offset, ' ');
+					mvwaddch(window, y, draw_x + tab_offset, ' ');
 					draw_x++;
 				}
 			} else {
-				mvaddch(y + 1, draw_x, ch);
+				mvwaddch(window, y, draw_x, ch);
 				draw_x++;
 			}
-			standend();
+			wstandend(window);
 		}
 
 		if (cur->highlight && cur->y == y && cur->x + cur->horizontal_scroll == line->length) {
-			standout();
-			mvaddch(y + 1, draw_x, ' ');
-			standend();
+			wstandout(window);
+			mvwaddch(window, y, draw_x, ' ');
+			wstandend(window);
 		}
 	}
 }
@@ -570,6 +570,14 @@ struct document * convert_to_document(char *file_buffer, int file_length) {
 	return doc;
 }
 
+void draw_line_numbers(WINDOW *window, struct cursor *cur) {
+	wstandout(window);
+	for (int i = 0; i <= cur->max_window_y; i++) {
+		mvwprintw(window, i, 0, "%03d", cur->vertical_scroll + i + 1);
+	}
+	wstandend(window);
+}
+
 int main(int argc, char *argv[]) {
 	char *savefile;
 	char savepath[1024];
@@ -579,7 +587,6 @@ int main(int argc, char *argv[]) {
 	//delay.tv_nsec = 16300000L;
 	delay.tv_nsec = 32600000L;
 
-	WINDOW *diag_win;
 	int max_x = 0, max_y = 0, file_length = 0;
 	char ch = -1;
 	char *chars = (char *) malloc(CHARACTER_INPUT_ARR_LENGTH * sizeof(char));
@@ -599,35 +606,45 @@ int main(int argc, char *argv[]) {
 
 	char *file_buffer = read_file(directory, &file_length);
 
-	WINDOW *root = curses_setup();
+	curses_setup();
 
 	getmaxyx(stdscr, max_y, max_x);
+	WINDOW *root = newwin(max_y, max_x, 1, LINE_NUMBER_WIDTH);
+	WINDOW *title_bar = newwin(1, max_x, 0, 0);
+	WINDOW *line_numbers = newwin(max_y - 1, LINE_NUMBER_WIDTH, 1, 0);
+	WINDOW *diag_win = newwin(DEBUG_LINES, DEBUG_COLUMNS, max_y - DEBUG_LINES, max_x - DEBUG_COLUMNS);
 
 	if (max_x < 1 || max_y < 2) {
 		return 2;
 	}
 
-	struct cursor cur = {0, 0, 0, 0, max_y - 2, max_x - 1, 1, 0};
+	struct cursor cur = {0, 0, 0, 0, max_y - 2, max_x - 1 - LINE_NUMBER_WIDTH, 1, 0};
 
 	struct document *doc = convert_to_document(file_buffer, file_length);
-
-	diag_win = newwin(DEBUG_LINES, DEBUG_COLUMNS, max_y - DEBUG_LINES, max_x - DEBUG_COLUMNS);
 
 	while (1) {
 		if (chars[0] == 23) { //CTRL+w
 			break;
 		}
-		process_text(doc, &cur, chars, length);
+		process_text(doc, &cur, chars, length);		
 
 		wclear(root);
-		draw_title_bar(max_y, max_x);
-		draw_text(doc, &cur);
+		draw_text(root, doc, &cur);
 
 		tick_cursor(&cur);
 
 		wnoutrefresh(root);
+
+		wclear(title_bar);
+		draw_title_bar(title_bar, max_x);
+		wnoutrefresh(title_bar);
+
+		wclear(line_numbers);
+		draw_line_numbers(line_numbers, &cur);
+		wnoutrefresh(line_numbers);
+
 		wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[1]);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[0]);
 		wnoutrefresh(diag_win);
 		doupdate();
 
