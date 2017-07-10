@@ -75,7 +75,7 @@ struct line * get_line(struct document *doc, struct cursor *cur) {
 int get_tab_offset(struct document *doc, struct cursor *cur) {
 	struct line *line = get_line(doc, cur);
 	int tab_offset = 0;
-	for (int x = 0; x < cur->x + cur->horizontal_scroll; x++) {
+	for (int x = cur->horizontal_scroll; x < cur->horizontal_scroll + cur->max_window_x; x++) {
 		if (line->array[x] == '\t') {
 			tab_offset += TAB_WIDTH - 1;
 		}
