@@ -608,9 +608,14 @@ void goto_line(struct document *doc, struct cursor *cur) {
 		if (ch != '\n') {
 			if (index <= 5 && ch != -1 && ch >= '0' && ch <= '9') {
 				mvwaddch(line_win, 0, 7 + index, ch);
-				wrefresh(line_win);
 				chars[index++] = ch;
+			} else if (ch == 8 || ch == 127) {
+				if (index > 0) {
+					mvwaddch(line_win, 0, 7 + --index, ' ');
+					chars[index] = 0;
+				}
 			}
+			wrefresh(line_win);
 		} else {
 			break;
 		}
@@ -620,9 +625,12 @@ void goto_line(struct document *doc, struct cursor *cur) {
 	int line_number = atoi(chars);
 	if (line_number > doc->length) {
 		line_number = doc->length - 1;
+	} else if (line_number < 1) {
+		line_number = 1;
 	}
 	cur->y = 0;
 	cur->vertical_scroll = line_number - 1;
+	reset_cursor_highlight(cur);
 }
 
 int main(int argc, char *argv[]) {
