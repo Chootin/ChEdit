@@ -26,10 +26,14 @@ void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x,
 	mvwprintw(diag_win, 4, 0, "ch: %d", ch);
 }
 
-void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile) {
+void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile, char unsaved_changes) {
 	wstandout(window);
 	mvwhline(window, 0, 0, ' ', max_x);
-	mvwprintw(window, 0, LINE_NUMBER_WIDTH, "ChEdit: %s/%s", savepath, savefile);
+	if (unsaved_changes) {
+		mvwprintw(window, 0, LINE_NUMBER_WIDTH, "ChEdit: %s/%s*", savepath, savefile);
+	} else {
+		mvwprintw(window, 0, LINE_NUMBER_WIDTH, "ChEdit: %s/%s", savepath, savefile);
+	}
 	wstandend(window);
 }
 
@@ -635,6 +639,7 @@ void goto_line(struct document *doc, struct cursor *cur) {
 int main(int argc, char *argv[]) {
 	char *savefile;
 	char savepath[1024];
+	char unsaved_changes = FALSE;
 
 	struct timespec delay;
 	delay.tv_sec = 0;
@@ -644,7 +649,8 @@ int main(int argc, char *argv[]) {
 	int max_x = 0, max_y = 0, file_length = 0;
 	char ch = -1;
 	char *chars = (char *) malloc(CHARACTER_INPUT_ARR_LENGTH * sizeof(char));
-	int length = 0;
+	int length = 1;
+	chars[0] = -1;
 
 	getcwd(savepath, 1024);
 
@@ -678,10 +684,13 @@ int main(int argc, char *argv[]) {
 
 	while (1) {
 		if (chars[0] == 23) { //CTRL+w
-			break;
+			write_file(directory, doc);
+			unsaved_changes = FALSE;
 		} else if (chars[0] == 7) { //CTRL+g
 			goto_line(doc, &cur);
 			chars[0] = -1;
+		} else if (chars[0] != -1) {
+			unsaved_changes = TRUE;
 		}
 
 		process_text(doc, &cur, chars, length);		
@@ -694,7 +703,7 @@ int main(int argc, char *argv[]) {
 		wnoutrefresh(root);
 
 		wclear(title_bar);
-		draw_title_bar(title_bar, max_x, savepath, savefile);
+		draw_title_bar(title_bar, max_x, savepath, savefile, unsaved_changes);
 		wnoutrefresh(title_bar);
 
 		wclear(line_numbers);
@@ -717,9 +726,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	endwin();
-	printf("Writing output to %s\n", directory);
-
-	write_file(directory, doc);
 
 	return 0;
 }
