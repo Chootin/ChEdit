@@ -37,8 +37,19 @@ void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile, c
 	wstandend(window);
 }
 
+int get_line_length(LINE *line) {
+	int length = 0;
+	for (int i = 0; i < line->length; i++) {
+		if (line->array[i] == '\t') {
+			length += TAB_WIDTH;
+		} else {
+			length++;
+		}
+	}
+}
+
 void tick_cursor(CURSOR *cur) {
-	if (cur->highlight_tick++ == 25) {
+	if (cur->highlight_tick++ == 12) {
 		cur->highlight_tick = 0;
 		if (cur->highlight) {
 			cur->highlight = 0;
@@ -49,7 +60,17 @@ void tick_cursor(CURSOR *cur) {
 }
 
 char cursor_active_here(CURSOR *cur, int y, int x) {
-	return cur->highlight && cur->y == y && cur->x + cur->horizontal_scroll == x;
+	int cur_pos = cur->x + cur->horizontal_scroll;
+	if (cur->y == y) {
+		if (cur->selection) {
+			if (x >= cur_pos && x < cur_pos + cur->select_x) {
+				return TRUE;
+			}
+		} else {
+			return cur->highlight && cur->x + cur->horizontal_scroll == x;
+		}
+	}
+	return FALSE;
 }
 
 LINE * get_line(DOCUMENT *doc, CURSOR *cur) {
@@ -73,10 +94,13 @@ void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 	for (int y = 0; y < doc->length - cur->vertical_scroll; y++) {
 		int draw_x = 0;
 		int start_x = 0;
-		int tab_offset = 0;
+		int offset = cur->x + get_tab_offset(doc, cur) - cur->max_window_x;
 		LINE *line = lines[y + cur->vertical_scroll];
 		if (y == cur->y) {
 			start_x = cur->horizontal_scroll;
+		}
+		if (offset > 0) {
+			start_x += offset;
 		}
 		for (int x = start_x; x < line->length; x++) {
 			char ch = line->array[x];
@@ -85,7 +109,7 @@ void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 			}
 			if (ch == '\t') {
 				for (int i = 0; i < TAB_WIDTH; i++) {
-					mvwaddch(window, y, draw_x + tab_offset, ' ');
+					mvwaddch(window, y, draw_x, ' ');
 					draw_x++;
 				}
 			} else {
@@ -275,7 +299,7 @@ void append_line(LINE *line, LINE *append) {
 void delete_character(DOCUMENT *doc, CURSOR *cur) {
 	LINE *line = get_line(doc, cur);
 	if (line->length > 0 && cur->x + cur->horizontal_scroll < line->length) {
-		char *array = line->array; 
+		char *array = line->array;
 		for (int i = cur->x + cur->horizontal_scroll; i < line->length; i++) {
 			array[i] = array[i + 1];
 		}
@@ -300,7 +324,13 @@ void erase_character(DOCUMENT *doc, CURSOR *cur) {
 				append_line(last_line, line);
 			}
 			delete_line(doc, cur);
-			cur->x = new_cur_x;
+			if (new_cur_x > cur->max_window_x) {
+				cur->x = cur->max_window_x;
+				cur->horizontal_scroll = new_cur_x - cur->x;
+			} else {
+				cur->x = new_cur_x;
+			}
+			
 			reset_cursor_highlight(cur);
 		}
 	} else {
@@ -379,11 +409,11 @@ void insert_new_line(DOCUMENT *doc, CURSOR *cur, LINE *line) {
 LINE * crop_line(DOCUMENT *doc, CURSOR *cur) {
 	LINE *line = get_line(doc, cur);
 	LINE *new_line = (LINE *) malloc(sizeof(LINE));
-	new_line->length = line->length - cur->x;
+	new_line->length = line->length - (cur->x + cur->horizontal_scroll);
 	new_line->array = (char *) malloc(new_line->length * sizeof(char));
 
 	for (int i = 0; i < new_line->length; i++) {
-		new_line->array[i] = line->array[i + cur->x];
+		new_line->array[i] = line->array[i + cur->x + cur->horizontal_scroll];
 	}
 
 	line->length -= new_line->length;
@@ -481,7 +511,6 @@ char process_text(DOCUMENT *doc, CURSOR *cur, char *ch, int length) {
 		} else if (ch[0] == '\n' || ch[0] == '\r') {
 			LINE *new_line = crop_line(doc, cur);
 			insert_new_line(doc, cur, new_line);
-
 			increment_y(doc, cur);
 			cur->x = 0;
 		} else if (ch[0] >= 32 && ch[0] <= 126) {
@@ -650,7 +679,7 @@ int main(int argc, char *argv[]) {
 	struct timespec delay;
 	delay.tv_sec = 0;
 	//delay.tv_nsec = 16300000L;
-	delay.tv_nsec = 32600000L;
+	delay.tv_nsec = 65200000L;
 
 	int max_x = 0, max_y = 0, file_length = 0;
 	char ch = -1;
