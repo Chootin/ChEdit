@@ -157,13 +157,11 @@ void decrement_y(struct document *doc, struct cursor *cur) {
 }
 
 void increment_y(struct document *doc, struct cursor *cur) {
-	if (cur->y + 1 < doc->length) {
+	if (cur->y + cur->vertical_scroll < doc->length - 1) {
 		if (cur->y < cur->max_window_y) {
 			cur->y++;
 		} else {
-			if (cur->vertical_scroll < doc->length - cur->max_window_y - 1) {
-				cur->vertical_scroll++;
-			}
+			cur->vertical_scroll++;
 		}
 	}
 
@@ -628,8 +626,13 @@ void goto_line(struct document *doc, struct cursor *cur) {
 	} else if (line_number < 1) {
 		line_number = 1;
 	}
-	cur->y = 0;
-	cur->vertical_scroll = line_number - 1;
+	if (line_number < doc->length - cur->max_window_y) {
+		cur->y = 0;
+		cur->vertical_scroll = line_number - 1;
+	} else {
+		cur->vertical_scroll = doc->length - cur->max_window_y - 1;
+		cur->y = line_number - cur->vertical_scroll;
+	}
 	reset_cursor_highlight(cur);
 }
 
