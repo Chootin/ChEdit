@@ -751,8 +751,10 @@ int main(int argc, char *argv[]) {
 		length = 0;
 
 		ch = getch();
-		while (ch != -1 && length < CHARACTER_INPUT_ARR_LENGTH) {
-			chars[length++] = ch;
+		while (ch != -1) {
+			if (length < CHARACTER_INPUT_ARR_LENGTH) {
+				chars[length++] = ch;
+			}
 			ch = getch();
 		}
 		nanosleep(&delay, NULL);
