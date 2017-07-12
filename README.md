@@ -18,7 +18,7 @@ PgUp - go to beginning of document
 
 PgDown - go to end of document
 
-Home - go to start of line
+Home - go to start of line/ first non whitespace character on line
 
 End - go to end of line
 
@@ -38,6 +38,8 @@ Find and Replace
 Scroll with scroll wheel
 
 # Build Instructions
-Run ./build.sh chedit
+Install GCC and Curses
+Run ./build.sh
+
 
 *probably not actually.

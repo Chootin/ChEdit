@@ -3,36 +3,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include "chedit.h"
 
 #define DEBUG_LINES (5)
 #define DEBUG_COLUMNS (12)
 #define TAB_WIDTH (4)
 #define CHARACTER_INPUT_ARR_LENGTH (6)
 #define LINE_NUMBER_WIDTH (4)
-
-struct line {
-	char *array;
-	int length;
-};
-
-struct document {
-	struct line **lines;
-	int length;
-};
-
-struct cursor {
-	int y;
-	int x;
-	int select_y;
-	int select_x;
-	int selection;
-	int vertical_scroll;
-	int horizontal_scroll;
-	int max_window_y;
-	int max_window_x;
-	int highlight;
-	int highlight_tick;
-};
 
 void curses_setup() {
 	initscr();
@@ -140,6 +117,21 @@ void seek_line_end(struct document *doc, struct cursor *cur) {
 		}
 		if (cur->x < 0) {
 			cur->x = 0;
+		}
+	}
+}
+
+void seek_line_start(struct document *doc, struct cursor *cur) {
+	cur->x = 0;
+	cur->horizontal_scroll = 0;
+	struct line *line = get_line(doc, cur);
+
+	for (int i = 0; i < line->length; i++) {
+		char ch = line->array[i];
+		if (ch == '\t' || ch == ' ') {
+			increment_x(doc, cur, FALSE);
+		} else {
+			break;
 		}
 	}
 }
@@ -412,10 +404,14 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 					cur->y = cur->max_window_y;
 				}
 				seek_line_end(doc, cur);
-			} else if (ch[2] == 72) {
-				cur->x = 0;
-				cur->horizontal_scroll = 0;
-			} else if (ch[2] == 70) {
+			} else if (ch[2] == 72) { // Home
+				if (cur->x + cur->horizontal_scroll == 0) {
+					seek_line_start(doc, cur);
+				} else {
+					cur->x = 0;
+					cur->horizontal_scroll = 0;
+				}
+			} else if (ch[2] == 70) { // End
 				struct line *line = get_line(doc, cur);
 				if (line->length < cur->max_window_x) {
 					cur->x = line->length;
