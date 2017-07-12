@@ -37,7 +37,7 @@ void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile, c
 	wstandend(window);
 }
 
-void tick_cursor(struct cursor *cur) {
+void tick_cursor(CURSOR *cur) {
 	if (cur->highlight_tick++ == 25) {
 		cur->highlight_tick = 0;
 		if (cur->highlight) {
@@ -48,16 +48,16 @@ void tick_cursor(struct cursor *cur) {
 	}
 }
 
-char cursor_active_here(struct cursor *cur, int y, int x) {
+char cursor_active_here(CURSOR *cur, int y, int x) {
 	return cur->highlight && cur->y == y && cur->x + cur->horizontal_scroll == x;
 }
 
-struct line * get_line(struct document *doc, struct cursor *cur) {
+LINE * get_line(DOCUMENT *doc, CURSOR *cur) {
 	return doc->lines[cur->y + cur->vertical_scroll];
 }
 
-int get_tab_offset(struct document *doc, struct cursor *cur) {
-	struct line *line = get_line(doc, cur);
+int get_tab_offset(DOCUMENT *doc, CURSOR *cur) {
+	LINE *line = get_line(doc, cur);
 	int tab_offset = 0;
 	for (int x = cur->horizontal_scroll; x < cur->horizontal_scroll + cur->max_window_x; x++) {
 		if (line->array[x] == '\t') {
@@ -67,14 +67,14 @@ int get_tab_offset(struct document *doc, struct cursor *cur) {
 	return tab_offset;
 }
 
-void draw_text(WINDOW *window, struct document *doc, struct cursor *cur) {
-	struct line **lines = doc->lines;
+void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
+	LINE **lines = doc->lines;
 
 	for (int y = 0; y < doc->length - cur->vertical_scroll; y++) {
 		int draw_x = 0;
 		int start_x = 0;
 		int tab_offset = 0;
-		struct line *line = lines[y + cur->vertical_scroll];
+		LINE *line = lines[y + cur->vertical_scroll];
 		if (y == cur->y) {
 			start_x = cur->horizontal_scroll;
 		}
@@ -103,13 +103,13 @@ void draw_text(WINDOW *window, struct document *doc, struct cursor *cur) {
 	}
 }
 
-void reset_cursor_highlight(struct cursor *cur) {
+void reset_cursor_highlight(CURSOR *cur) {
 	cur->highlight = 1;
 	cur->highlight_tick = 0;
 }
 
-void seek_line_end(struct document *doc, struct cursor *cur) {
-	struct line *line = get_line(doc, cur);
+void seek_line_end(DOCUMENT *doc, CURSOR *cur) {
+	LINE *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll > line->length) {
 		if (line->length > cur->max_window_x) {
@@ -125,10 +125,10 @@ void seek_line_end(struct document *doc, struct cursor *cur) {
 	}
 }
 
-void seek_line_start(struct document *doc, struct cursor *cur) {
+void seek_line_start(DOCUMENT *doc, CURSOR *cur) {
 	cur->x = 0;
 	cur->horizontal_scroll = 0;
-	struct line *line = get_line(doc, cur);
+	LINE *line = get_line(doc, cur);
 
 	for (int i = 0; i < line->length; i++) {
 		char ch = line->array[i];
@@ -140,7 +140,7 @@ void seek_line_start(struct document *doc, struct cursor *cur) {
 	}
 }
 
-void decrement_y(struct document *doc, struct cursor *cur) {
+void decrement_y(DOCUMENT *doc, CURSOR *cur) {
 	if (cur->y > 0) {
 		cur->y--;
 	} else if (cur->vertical_scroll > 0) {
@@ -152,7 +152,7 @@ void decrement_y(struct document *doc, struct cursor *cur) {
 	reset_cursor_highlight(cur);
 }
 
-void increment_y(struct document *doc, struct cursor *cur) {
+void increment_y(DOCUMENT *doc, CURSOR *cur) {
 	if (cur->y + cur->vertical_scroll < doc->length - 1) {
 		if (cur->y < cur->max_window_y) {
 			cur->y++;
@@ -166,7 +166,7 @@ void increment_y(struct document *doc, struct cursor *cur) {
 	reset_cursor_highlight(cur);
 }
 
-void decrement_y_para(struct document *doc, struct cursor *cur) {
+void decrement_y_para(DOCUMENT *doc, CURSOR *cur) {
 	decrement_y(doc, cur);
 	for (int i = cur->y + cur->vertical_scroll - 1; i >= 0; i--) {
 		if (doc->lines[i]->length > 0) {
@@ -177,7 +177,7 @@ void decrement_y_para(struct document *doc, struct cursor *cur) {
 	}
 }
 
-void increment_y_para(struct document *doc, struct cursor *cur) {
+void increment_y_para(DOCUMENT *doc, CURSOR *cur) {
 	increment_y(doc, cur);
 	for (int i = cur->y + cur->vertical_scroll; i < doc->length; i++) {
 		if (doc->lines[i]->length > 0) {
@@ -189,7 +189,7 @@ void increment_y_para(struct document *doc, struct cursor *cur) {
 	increment_y(doc, cur);
 }
 
-void decrement_x(struct cursor *cur, char shift) {
+void decrement_x(CURSOR *cur, char shift) {
 	if (cur->x > 0) {
 		cur->x--;
 	} else if (cur->horizontal_scroll > 0) {
@@ -199,8 +199,8 @@ void decrement_x(struct cursor *cur, char shift) {
 	reset_cursor_highlight(cur);
 }
 
-void increment_x(struct document *doc, struct cursor *cur, char shift) {
-	struct line *line = get_line(doc, cur);
+void increment_x(DOCUMENT *doc, CURSOR *cur, char shift) {
+	LINE *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll < line->length) {
 		if (cur->x + get_tab_offset(doc, cur) >= cur->max_window_x) {
@@ -213,12 +213,12 @@ void increment_x(struct document *doc, struct cursor *cur, char shift) {
 	reset_cursor_highlight(cur);
 }
 
-char get_cursor_char(struct document *doc, struct cursor *cur) {
-	struct line *line = get_line(doc, cur);
+char get_cursor_char(DOCUMENT *doc, CURSOR *cur) {
+	LINE *line = get_line(doc, cur);
 	return line->array[cur->x + cur->horizontal_scroll];
 }
 
-void decrement_x_word(struct document *doc, struct cursor *cur) {
+void decrement_x_word(DOCUMENT *doc, CURSOR *cur) {
 	decrement_x(cur, FALSE);
 	while (cur->x > 0 || cur->horizontal_scroll > 0) {
 		decrement_x(cur, FALSE);
@@ -230,8 +230,8 @@ void decrement_x_word(struct document *doc, struct cursor *cur) {
 	}
 }
 
-void increment_x_word(struct document *doc, struct cursor *cur) {
-	struct line *line = get_line(doc, cur);
+void increment_x_word(DOCUMENT *doc, CURSOR *cur) {
+	LINE *line = get_line(doc, cur);
 	while (cur->x + cur->horizontal_scroll < line->length) {
 		increment_x(doc, cur, FALSE);
 		char ch = get_cursor_char(doc, cur);
@@ -242,7 +242,7 @@ void increment_x_word(struct document *doc, struct cursor *cur) {
 	}
 }
 
-void delete_line(struct document *doc, struct cursor *cur) {
+void delete_line(DOCUMENT *doc, CURSOR *cur) {
 	int y = cur->y-- + cur->vertical_scroll;
 	doc->length--;
 
@@ -254,7 +254,7 @@ void delete_line(struct document *doc, struct cursor *cur) {
 	}
 }
 
-void append_line(struct line *line, struct line *append) {
+void append_line(LINE *line, LINE *append) {
 	int new_length = line->length + append->length;
 	char *old_array = line->array;
 	char *new_array = (char *) malloc(new_length * sizeof(char));
@@ -272,8 +272,8 @@ void append_line(struct line *line, struct line *append) {
 	line->array = new_array;
 }
 
-void delete_character(struct document *doc, struct cursor *cur) {
-	struct line *line = get_line(doc, cur);
+void delete_character(DOCUMENT *doc, CURSOR *cur) {
+	LINE *line = get_line(doc, cur);
 	if (line->length > 0 && cur->x + cur->horizontal_scroll < line->length) {
 		char *array = line->array; 
 		for (int i = cur->x + cur->horizontal_scroll; i < line->length; i++) {
@@ -281,8 +281,8 @@ void delete_character(struct document *doc, struct cursor *cur) {
 		}
 		line->length--;
 	} else if (cur->y + cur->vertical_scroll < doc->length - 1) {
-		struct line *line = get_line(doc, cur);
-		struct line *next_line = doc->lines[cur->y + cur->vertical_scroll + 1];
+		LINE *line = get_line(doc, cur);
+		LINE *next_line = doc->lines[cur->y + cur->vertical_scroll + 1];
 		append_line(line, next_line);
 		cur->y++;
 		delete_line(doc, cur);
@@ -290,11 +290,11 @@ void delete_character(struct document *doc, struct cursor *cur) {
 	reset_cursor_highlight(cur);
 }
 
-void erase_character(struct document *doc, struct cursor *cur) {
+void erase_character(DOCUMENT *doc, CURSOR *cur) {
 	if (cur->x + cur->horizontal_scroll == 0) {
 		if (cur->y + cur->vertical_scroll > 0) {
-			struct line *line = get_line(doc, cur);
-			struct line *last_line = doc->lines[cur->y + cur->vertical_scroll - 1];
+			LINE *line = get_line(doc, cur);
+			LINE *last_line = doc->lines[cur->y + cur->vertical_scroll - 1];
 			int new_cur_x = last_line->length;
 			if (line->length > 0) {
 				append_line(last_line, line);
@@ -309,8 +309,8 @@ void erase_character(struct document *doc, struct cursor *cur) {
 	}
 }
 
-void erase_word(struct document *doc, struct cursor *cur) {
-	struct line *line = get_line(doc, cur);
+void erase_word(DOCUMENT *doc, CURSOR *cur) {
+	LINE *line = get_line(doc, cur);
 	for (int i = cur->x + cur->horizontal_scroll - 1; i > 0; i--) {
 		char ch = line->array[i];
 		if (ch == ' ' || ch == '\t') {
@@ -322,7 +322,7 @@ void erase_word(struct document *doc, struct cursor *cur) {
 	erase_character(doc, cur);
 }
 
-void increase_line_length(struct line *line, int increase) {
+void increase_line_length(LINE *line, int increase) {
 	char *new_array = (char *) malloc((line->length + increase) * sizeof(char));
 	char *old_array = line->array;
 
@@ -335,8 +335,8 @@ void increase_line_length(struct line *line, int increase) {
 	free(old_array);
 }
 
-void insert_character(struct document *doc, struct cursor *cur, char ch) {
-	struct line *line = get_line(doc, cur);
+void insert_character(DOCUMENT *doc, CURSOR *cur, char ch) {
+	LINE *line = get_line(doc, cur);
 	increase_line_length(line, 1);
 
 	char *array = line->array;
@@ -348,10 +348,10 @@ void insert_character(struct document *doc, struct cursor *cur, char ch) {
 	array[cur->x + cur->horizontal_scroll] = ch;
 }
 
-void insert_new_line(struct document *doc, struct cursor *cur, struct line *line) {
+void insert_new_line(DOCUMENT *doc, CURSOR *cur, LINE *line) {
 	int y = cur->y + cur->vertical_scroll + 1;
-	struct line **old_lines = doc->lines;
-	struct line **new_lines = (struct line **) malloc((doc->length + 1) * sizeof(struct line *));
+	LINE **old_lines = doc->lines;
+	LINE **new_lines = (LINE **) malloc((doc->length + 1) * sizeof(LINE *));
 
 	if (y < doc->length) {
 		int index = 0;
@@ -376,9 +376,9 @@ void insert_new_line(struct document *doc, struct cursor *cur, struct line *line
 	free(old_lines);
 }
 
-struct line * crop_line(struct document *doc, struct cursor *cur) {
-	struct line *line = get_line(doc, cur);
-	struct line *new_line = (struct line *) malloc(sizeof(struct line));
+LINE * crop_line(DOCUMENT *doc, CURSOR *cur) {
+	LINE *line = get_line(doc, cur);
+	LINE *new_line = (LINE *) malloc(sizeof(LINE));
 	new_line->length = line->length - cur->x;
 	new_line->array = (char *) malloc(new_line->length * sizeof(char));
 
@@ -390,12 +390,13 @@ struct line * crop_line(struct document *doc, struct cursor *cur) {
 	return new_line;
 }
 
-void process_text(struct document *doc, struct cursor *cur, char *ch, int length) {
+char process_text(DOCUMENT *doc, CURSOR *cur, char *ch, int length) {
 	if (length == 0 || ch[0] == ERR || ch[0] == 0) {
 	} else if (ch[0] == 27) {
 		if (ch[1] == 91 || ch[1] == 79) {
 			if (ch[2] == 51) {
-				delete_character(doc, cur);	
+				delete_character(doc, cur);
+				return TRUE;
 			} else if (ch[2] == 53) {
 				cur->y = 0;
 				cur->vertical_scroll = 0;
@@ -416,7 +417,7 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 					cur->horizontal_scroll = 0;
 				}
 			} else if (ch[2] == 70) { // End
-				struct line *line = get_line(doc, cur);
+				LINE *line = get_line(doc, cur);
 				if (line->length < cur->max_window_x) {
 					cur->x = line->length;
 				} else {
@@ -469,6 +470,7 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 			reset_cursor_highlight(cur);
 		} else if (ch[1] == 127) {
 			erase_word(doc, cur);
+			return TRUE;
 		}
 	} else {
 		if (ch[0] == 9) { //Tab key
@@ -477,7 +479,7 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 		} else if (ch[0] == 8 || ch[0] == 127) { //Backspace
 			erase_character(doc, cur);
 		} else if (ch[0] == '\n' || ch[0] == '\r') {
-			struct line *new_line = crop_line(doc, cur);
+			LINE *new_line = crop_line(doc, cur);
 			insert_new_line(doc, cur, new_line);
 
 			increment_y(doc, cur);
@@ -485,11 +487,15 @@ void process_text(struct document *doc, struct cursor *cur, char *ch, int length
 		} else if (ch[0] >= 32 && ch[0] <= 126) {
 			insert_character(doc, cur, ch[0]);
 			increment_x(doc, cur, FALSE);
+		} else {
+			return FALSE;
 		}
+		return TRUE;
 	}
+	return FALSE;
 }
 
-void write_file(char * directory, struct document *doc) {
+void write_file(char * directory, DOCUMENT *doc) {
 	FILE *f;
 	f = fopen(directory, "w");
 	fprintf(f, "");
@@ -497,7 +503,7 @@ void write_file(char * directory, struct document *doc) {
 	f = fopen(directory, "a");
 
 	for (int i = 0; i < doc->length; i++) {
-		struct line *line = doc->lines[i];
+		LINE *line = doc->lines[i];
 		for (int x = 0; x < line->length; x++) {
 			char ch = line->array[x];
 			if (ch == 0) {
@@ -541,7 +547,7 @@ char * read_file(char *directory, int *length_of_file) {
 	return file_buffer;
 }
 
-struct document * convert_to_document(char *file_buffer, int file_length) {
+DOCUMENT * convert_to_document(char *file_buffer, int file_length) {
 	int number_of_lines = 1;
 
 	for (int i = 0; i < file_length; i++) {
@@ -551,9 +557,9 @@ struct document * convert_to_document(char *file_buffer, int file_length) {
 		}
 	}
 
-	struct line **lines = (struct line **) malloc(number_of_lines * sizeof(struct line *));
+	LINE **lines = (LINE **) malloc(number_of_lines * sizeof(LINE *));
 
-	struct document *doc = (struct document *) malloc(sizeof(struct document));
+	DOCUMENT *doc = (DOCUMENT *) malloc(sizeof(DOCUMENT));
 	doc->lines = lines;
 	doc->length = number_of_lines;
 
@@ -569,7 +575,7 @@ struct document * convert_to_document(char *file_buffer, int file_length) {
 			}
 		}
 
-		struct line *line = (struct line *) malloc(sizeof(struct line));
+		LINE *line = (LINE *) malloc(sizeof(LINE));
 		char * line_char = (char *) malloc(line_length * sizeof(char));
 		line->array = line_char;
 		line->length = line_length;
@@ -584,7 +590,7 @@ struct document * convert_to_document(char *file_buffer, int file_length) {
 	return doc;
 }
 
-void draw_line_numbers(WINDOW *window, struct cursor *cur) {
+void draw_line_numbers(WINDOW *window, CURSOR *cur) {
 	wstandout(window);
 	for (int i = 0; i <= cur->max_window_y; i++) {
 		mvwprintw(window, i, 0, "%04d", cur->vertical_scroll + i + 1);
@@ -592,7 +598,7 @@ void draw_line_numbers(WINDOW *window, struct cursor *cur) {
 	wstandend(window);
 }
 
-void goto_line(struct document *doc, struct cursor *cur) {
+void goto_line(DOCUMENT *doc, CURSOR *cur) {
 	WINDOW *line_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, LINE_NUMBER_WIDTH);
 	char *chars = (char *) malloc(6 * sizeof(char));
 	int index = 0;
@@ -678,9 +684,9 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 
-	struct cursor cur = {0, 0, 0, 0, 0, 0, 0, max_y - 2, max_x - 1 - LINE_NUMBER_WIDTH, 1, 0};
+	CURSOR cur = {0, 0, 0, 0, 0, 0, 0, max_y - 2, max_x - 1 - LINE_NUMBER_WIDTH, 1, 0};
 
-	struct document *doc = convert_to_document(file_buffer, file_length);
+	DOCUMENT *doc = convert_to_document(file_buffer, file_length);
 
 	while (1) {
 		if (chars[0] == 23) { //CTRL+w
@@ -689,11 +695,9 @@ int main(int argc, char *argv[]) {
 		} else if (chars[0] == 7) { //CTRL+g
 			goto_line(doc, &cur);
 			chars[0] = -1;
-		} else if (chars[0] != -1) {
-			unsaved_changes = TRUE;
 		}
 
-		process_text(doc, &cur, chars, length);		
+		unsaved_changes = process_text(doc, &cur, chars, length) || unsaved_changes;
 
 		wclear(root);
 		draw_text(root, doc, &cur);

@@ -37,6 +37,8 @@ Find and Replace
 
 Scroll with scroll wheel
 
+Star indicates if the file has been edited since the last save
+
 # Build Instructions
 Install GCC and Curses
 Run ./build.sh

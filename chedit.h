@@ -1,16 +1,16 @@
 #ifndef chedit_h
 
-struct line {
+typedef struct {
         char *array;
         int length;
-};
+} LINE;
 
-struct document {
-        struct line **lines;
+typedef struct {
+        LINE **lines;
         int length;
-};
+} DOCUMENT;
 
-struct cursor {
+typedef struct {
         int y;
         int x;
         int select_y;
@@ -22,8 +22,8 @@ struct cursor {
         int max_window_x;
         int highlight;
         int highlight_tick;
-};
+} CURSOR;
 
-void increment_x(struct document *doc, struct cursor *cur, char shift);
+void increment_x(DOCUMENT *doc, CURSOR *cur, char shift);
 
 #endif
