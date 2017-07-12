@@ -410,9 +410,9 @@ char process_text(DOCUMENT *doc, CURSOR *cur, char *ch, int length) {
 				}
 				seek_line_end(doc, cur);
 			} else if (ch[2] == 72) { // Home
-				if (cur->x + cur->horizontal_scroll == 0) {
-					seek_line_start(doc, cur);
-				} else {
+				int current_pos = cur->x + cur->horizontal_scroll;
+				seek_line_start(doc, cur);
+				if (current_pos == cur->x + cur->horizontal_scroll) {
 					cur->x = 0;
 					cur->horizontal_scroll = 0;
 				}
@@ -689,7 +689,7 @@ int main(int argc, char *argv[]) {
 	DOCUMENT *doc = convert_to_document(file_buffer, file_length);
 
 	while (1) {
-		if (chars[0] == 23) { //CTRL+w
+		if (chars[0] == 23 && unsaved_changes) { //CTRL+w
 			write_file(directory, doc);
 			unsaved_changes = FALSE;
 		} else if (chars[0] == 7) { //CTRL+g
