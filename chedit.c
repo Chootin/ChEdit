@@ -501,8 +501,9 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 	} else if (s_equals(ch, "\x1B[3~")) {//DELETE
 		delete_character(doc, cur);
 		return 2;
-	} else if (s_equals(ch, "")) {//CTRL+BACKSPACE
-	
+	} else if (s_equals(ch, "\x1B\x7F")) {//CTRL+BACKSPACE
+		erase_word(doc, cur);
+		return 2;
 	} else if (s_equals(ch, "\x7F\x00")) {//BACKSPACE
 		erase_character(doc, cur);
 		return 2;
@@ -519,7 +520,7 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 	//COPY
 	//CUT
 	//PASTE
-	//CTRL+BACKSPACE
+	//CTRL+BACKSPACE - instead of ALT+BACKSPACE
 	return 0;
 }
 
