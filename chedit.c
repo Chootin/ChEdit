@@ -25,7 +25,7 @@ void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x,
 	mvwprintw(diag_win, 1, 0, "Width: %d", max_x);
 	mvwprintw(diag_win, 2, 0, "Height: %d", max_y);
 	mvwprintw(diag_win, 3, 0, "X: %d, Y: %d", cur_x, cur_y);
-	mvwprintw(diag_win, 4, 0, "%s", ch);
+	mvwprintw(diag_win, 4, 0, "%d %d %d %d", ch[0], ch[1], ch[2], ch[3]);
 }
 
 void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile, char unsaved_changes) {
@@ -467,7 +467,7 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 		} else if (s_equals(ch, "[1;5B", 1)) {//CTRL+DOWN
 			increment_y_para(doc, cur);
 			return 1;
-		} else if (s_equals(ch, "[H", 1)) {//HOME
+		} else if (s_equals(ch, "OH", 1)) {//HOME
 			int current_pos = cur->x + cur->horizontal_scroll;
 			seek_line_start(doc, cur);
 			if (current_pos == cur->x + cur->horizontal_scroll) {
@@ -475,7 +475,7 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 				cur->horizontal_scroll = 0;
 			}
 			return 1;
-		} else if (s_equals(ch, "[F", 1)) {//END
+		} else if (s_equals(ch, "OF", 1)) {//END
 			LINE *line = get_line(doc, cur);
 			if (line->length < cur->max_window_x) {
 				cur->x = line->length;
@@ -499,12 +499,15 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 			}
 			seek_line_end(doc, cur);
 			return 1;
-		}else if (s_equals(ch, "[3~", 0)) {//DELETE
+		} else if (s_equals(ch, "[3~", 1)) {//DELETE
 			delete_character(doc, cur);
 			return 2;
 		}
-	} else if (s_equals(ch, "^?", 0)) {//BACKSPACE
+	} else if (ch[0] == 127) {//BACKSPACE
 		erase_character(doc, cur);
+		return 2;
+	} else if (ch[0] == 27) {
+		delete_character(doc, cur);
 		return 2;
 	}
 	//TODO:
@@ -701,6 +704,7 @@ int main(int argc, char *argv[]) {
 	char savepath[1024];
 	char unsaved_changes = FALSE;
 	char key_pressed = FALSE;
+	char show_debug = FALSE;
 
 	struct timespec delay;
 	delay.tv_sec = 0;
@@ -750,6 +754,8 @@ int main(int argc, char *argv[]) {
 		} else if (chars[0] == 7) { //CTRL+g
 			goto_line(doc, &cur);
 			chars[0] = -1;
+		} else if (chars[0] == 4) {
+			show_debug = TRUE;
 		}
 
 		unsaved_changes = process_text(doc, &cur, chars, length) || unsaved_changes;
@@ -769,9 +775,11 @@ int main(int argc, char *argv[]) {
 		draw_line_numbers(line_numbers, &cur);
 		wnoutrefresh(line_numbers);
 
-		wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars);
-		wnoutrefresh(diag_win);
+		if (show_debug) {
+			wclear(diag_win);
+			draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars);
+			wnoutrefresh(diag_win);
+		}
 		doupdate();
 
 		nanosleep(&delay, NULL);
