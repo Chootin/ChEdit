@@ -7,9 +7,9 @@
 #include "chedit.h"
 
 #define DEBUG_LINES (5)
-#define DEBUG_COLUMNS (12)
+#define DEBUG_COLUMNS (24)
 #define TAB_WIDTH (4)
-#define CHARACTER_INPUT_ARR_LENGTH (10)
+#define CHARACTER_INPUT_ARR_LENGTH (6)
 #define LINE_NUMBER_WIDTH (4)
 #define CURSOR_SPEED (25)
 
@@ -25,7 +25,7 @@ void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x,
 	mvwprintw(diag_win, 1, 0, "Width: %d", max_x);
 	mvwprintw(diag_win, 2, 0, "Height: %d", max_y);
 	mvwprintw(diag_win, 3, 0, "X: %d, Y: %d", cur_x, cur_y);
-	mvwprintw(diag_win, 4, 0, "%d %d %d %d", ch[0], ch[1], ch[2], ch[3]);
+	mvwprintw(diag_win, 4, 0, "%d %d %d %d %d %d %d", ch[0], ch[1], ch[2], ch[3], ch[4], ch[5], ch[6]);
 }
 
 void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile, char unsaved_changes) {
@@ -422,13 +422,13 @@ LINE * crop_line(DOCUMENT *doc, CURSOR *cur) {
 	return new_line;
 }
 
-char s_equals(char *input, char *compare, int start) {
+char s_equals(char *input, char *compare) {
 	//int compare = strcmp(string1, string2);
 	int index = 0;
 	while (TRUE) {
-		if (input[index + start] != compare[index]) {
+		if (input[index] != compare[index]) {
 			return FALSE;
-		} else if (input[index + start] == 0) {
+		} else if (input[index] == 0) {
 			return TRUE;
 		}
 		index++;
@@ -442,73 +442,76 @@ char s_equals(char *input, char *compare, int start) {
 ***          2 - Key combination found and document edit took place
 **/
 int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
-	if (ch[0] == 27) {
-		if (s_equals(ch, "[D", 1)) {//LEFT
-			decrement_x(cur, FALSE);
-			return 1;
-		} else if (s_equals(ch, "[C", 1)) { //RIGHT
-			increment_x(doc, cur, FALSE);
-			return 1;
-		}else if (s_equals(ch, "[A", 1)) {//UP
-			decrement_y(doc, cur);
-			return 1;
-		} else if (s_equals(ch, "[B", 1)) {//DOWN
-			increment_y(doc, cur);
-			return 1;
-		} else if (s_equals(ch, "[1;5D", 1)) {//CTRL+LEFT
-			decrement_x_word(doc, cur);
-			return 1;
-		} else if (s_equals(ch, "[1;5C", 1)) {//CTRL+RIGHT
-			increment_x_word(doc, cur);
-			return 1;
-		} else if (s_equals(ch, "[1;5A", 1)) {//CTRL+UP
-			decrement_y_para(doc, cur);
-			return 1;
-		} else if (s_equals(ch, "[1;5B", 1)) {//CTRL+DOWN
-			increment_y_para(doc, cur);
-			return 1;
-		} else if (s_equals(ch, "OH", 1)) {//HOME
-			int current_pos = cur->x + cur->horizontal_scroll;
-			seek_line_start(doc, cur);
-			if (current_pos == cur->x + cur->horizontal_scroll) {
-				cur->x = 0;
-				cur->horizontal_scroll = 0;
-			}
-			return 1;
-		} else if (s_equals(ch, "OF", 1)) {//END
-			LINE *line = get_line(doc, cur);
-			if (line->length < cur->max_window_x) {
-				cur->x = line->length;
-			} else {
-				cur->horizontal_scroll = line->length - cur->max_window_x;
-				cur->x = line->length - cur->horizontal_scroll;
-			}
-			return 1;
-		} else if (s_equals(ch, "[5~", 1)) {//PGUP
-			cur->y = 0;
-			cur->vertical_scroll = 0;
+	if (s_equals(ch, "\x1B[D")) {//LEFT
+		decrement_x(cur, FALSE);
+		return 1;
+	} else if (s_equals(ch, "\x1B[C")) { //RIGHT
+		increment_x(doc, cur, FALSE);
+		return 1;
+	}else if (s_equals(ch, "\x1B[A")) {//UP
+		decrement_y(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1B[B")) {//DOWN
+		increment_y(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1B[1;5D")) {//CTRL+LEFT
+		decrement_x_word(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1B[1;5C")) {//CTRL+RIGHT
+		increment_x_word(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1B[1;5A")) {//CTRL+UP
+		decrement_y_para(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1B[1;5B")) {//CTRL+DOWN
+		increment_y_para(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1BOH")) {//HOME
+		int current_pos = cur->x + cur->horizontal_scroll;
+		seek_line_start(doc, cur);
+		if (current_pos == cur->x + cur->horizontal_scroll) {
 			cur->x = 0;
 			cur->horizontal_scroll = 0;
-			return 1;
-		} else if (s_equals(ch, "[6~", 1)) {//PGDN
-			if (doc->length - 1 < cur->max_window_y) {
-				cur->y = doc->length - 1;
-			} else {
-				cur->vertical_scroll = doc->length - cur->max_window_y - 1;
-				cur->y = cur->max_window_y;
-			}
-			seek_line_end(doc, cur);
-			return 1;
-		} else if (s_equals(ch, "[3~", 1)) {//DELETE
-			delete_character(doc, cur);
-			return 2;
 		}
-	} else if (ch[0] == 127) {//BACKSPACE
-		erase_character(doc, cur);
-		return 2;
-	} else if (ch[0] == 27) {
+		return 1;
+	} else if (s_equals(ch, "\x1BOF")) {//END
+		LINE *line = get_line(doc, cur);
+		if (line->length < cur->max_window_x) {
+			cur->x = line->length;
+		} else {
+			cur->horizontal_scroll = line->length - cur->max_window_x;
+			cur->x = line->length - cur->horizontal_scroll;
+		}
+		return 1;
+	} else if (s_equals(ch, "\x1B[5~")) {//PGUP
+		cur->y = 0;
+		cur->vertical_scroll = 0;
+		cur->x = 0;
+		cur->horizontal_scroll = 0;
+		return 1;
+	} else if (s_equals(ch, "\x1B[6~")) {//PGDN
+		if (doc->length - 1 < cur->max_window_y) {
+			cur->y = doc->length - 1;
+		} else {
+			cur->vertical_scroll = doc->length - cur->max_window_y - 1;
+			cur->y = cur->max_window_y;
+		}
+		seek_line_end(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1B[3~")) {//DELETE
 		delete_character(doc, cur);
 		return 2;
+	} else if (s_equals(ch, "")) {//CTRL+BACKSPACE
+	
+	} else if (s_equals(ch, "\x7F\x00")) {//BACKSPACE
+		erase_character(doc, cur);
+		return 2;
+	} else if (s_equals(ch, "\x1B[B\x1B[B")) {//SCROLL DOWN
+		increment_y(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1B[A\x1B[A")) {//SCROLL UP
+		decrement_y(doc, cur);
+		return 1;
 	}
 	//TODO:
 	//SHIFT+ARROWS
@@ -709,7 +712,6 @@ int main(int argc, char *argv[]) {
 	struct timespec delay;
 	delay.tv_sec = 0;
 	delay.tv_nsec = 16300000L;
-	//delay.tv_nsec = 65200000L;
 
 	int max_x = 0, max_y = 0, file_length = 0;
 	char ch = -1;
@@ -748,14 +750,16 @@ int main(int argc, char *argv[]) {
 	DOCUMENT *doc = convert_to_document(file_buffer, file_length);
 
 	while (1) {
-		if (chars[0] == 23 && unsaved_changes) { //CTRL+w
-			write_file(directory, doc);
-			unsaved_changes = FALSE;
-		} else if (chars[0] == 7) { //CTRL+g
-			goto_line(doc, &cur);
-			chars[0] = -1;
-		} else if (chars[0] == 4) {
-			show_debug = TRUE;
+		if (key_pressed) {
+			if (chars[0] == 23 && unsaved_changes) { //CTRL+w
+				write_file(directory, doc);
+				unsaved_changes = FALSE;
+			} else if (chars[0] == 7) { //CTRL+g
+				goto_line(doc, &cur);
+				chars[0] = -1;
+			} else if (chars[0] == 4) {
+				show_debug = !show_debug;
+			}
 		}
 
 		unsaved_changes = process_text(doc, &cur, chars, length) || unsaved_changes;

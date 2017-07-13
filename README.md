@@ -28,6 +28,8 @@ Line numbers!
 
 CTRL + g - move cursor to line number
 
+Scroll UP/DOWN with the mouse/touchpad
+
 # Plans
 Shift + arrow keys to select test
 
