@@ -3,13 +3,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 #include "chedit.h"
 
 #define DEBUG_LINES (5)
 #define DEBUG_COLUMNS (12)
 #define TAB_WIDTH (4)
-#define CHARACTER_INPUT_ARR_LENGTH (6)
+#define CHARACTER_INPUT_ARR_LENGTH (10)
 #define LINE_NUMBER_WIDTH (4)
+#define CURSOR_SPEED (25)
 
 void curses_setup() {
 	initscr();
@@ -18,12 +20,12 @@ void curses_setup() {
 	nodelay(stdscr, true);
 }
 
-void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x, char ch) {
+void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x, char *ch) {
 	mvwprintw(diag_win, 0, 0, "Debug");
 	mvwprintw(diag_win, 1, 0, "Width: %d", max_x);
 	mvwprintw(diag_win, 2, 0, "Height: %d", max_y);
 	mvwprintw(diag_win, 3, 0, "X: %d, Y: %d", cur_x, cur_y);
-	mvwprintw(diag_win, 4, 0, "ch: %d", ch);
+	mvwprintw(diag_win, 4, 0, "%s", ch);
 }
 
 void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile, char unsaved_changes) {
@@ -49,7 +51,7 @@ int get_line_length(LINE *line) {
 }
 
 void tick_cursor(CURSOR *cur) {
-	if (cur->highlight_tick++ == 12) {
+	if (cur->highlight_tick++ == CURSOR_SPEED) {
 		cur->highlight_tick = 0;
 		if (cur->highlight) {
 			cur->highlight = 0;
@@ -420,106 +422,125 @@ LINE * crop_line(DOCUMENT *doc, CURSOR *cur) {
 	return new_line;
 }
 
-char process_text(DOCUMENT *doc, CURSOR *cur, char *ch, int length) {
-	if (length == 0 || ch[0] == ERR || ch[0] == 0) {
-	} else if (ch[0] == 27) {
-		if (ch[1] == 91 || ch[1] == 79) {
-			if (ch[2] == 51) {
-				delete_character(doc, cur);
-				return TRUE;
-			} else if (ch[2] == 53) {
-				cur->y = 0;
-				cur->vertical_scroll = 0;
-				seek_line_end(doc, cur);
-			} else if (ch[2] == 54) {
-				if (doc->length - 1 < cur->max_window_y) {
-					cur->y = doc->length - 1;
-				} else {
-					cur->vertical_scroll = doc->length - cur->max_window_y - 1;
-					cur->y = cur->max_window_y;
-				}
-				seek_line_end(doc, cur);
-			} else if (ch[2] == 72) { // Home
-				int current_pos = cur->x + cur->horizontal_scroll;
-				seek_line_start(doc, cur);
-				if (current_pos == cur->x + cur->horizontal_scroll) {
-					cur->x = 0;
-					cur->horizontal_scroll = 0;
-				}
-			} else if (ch[2] == 70) { // End
-				LINE *line = get_line(doc, cur);
-				if (line->length < cur->max_window_x) {
-					cur->x = line->length;
-				} else {
-					cur->horizontal_scroll = line->length - cur->max_window_x;
-					cur->x = line->length - cur->horizontal_scroll;
-				}
-			} else if (ch[2] == 49) {
-				if (ch[4] == 50) {
-					//Shift + arrows
-					switch(ch[5]) {
-						case 68:
-							decrement_x(cur, TRUE);
-							break;
-						case 67:
-							increment_x(doc, cur, TRUE);
-							break;
-					}
-				} else {
-					switch (ch[5]) {
-						case 68:
-							decrement_x_word(doc, cur);
-							break;
-						case 67:
-							increment_x_word(doc, cur);
-							break;
-						case 65:
-							decrement_y_para(doc, cur);
-							break;
-						case 66:
-							increment_y_para(doc, cur);
-							break;
-					}
-				}
-			} else {
-				switch (ch[2]) {
-					case 'A': //UP
-						decrement_y(doc, cur);
-						break;
-					case 'B': //DOWN
-						increment_y(doc, cur);
-						break;
-					case 'C': //RIGHT
-						increment_x(doc, cur, FALSE);
-						break;
-					case 'D': //LEFT
-						decrement_x(cur, FALSE);
-						break;
-				}
-			}
-			reset_cursor_highlight(cur);
-		} else if (ch[1] == 127) {
-			erase_word(doc, cur);
+char s_equals(char *input, char *compare, int start) {
+	//int compare = strcmp(string1, string2);
+	int index = 0;
+	while (TRUE) {
+		if (input[index + start] != compare[index]) {
+			return FALSE;
+		} else if (input[index + start] == 0) {
 			return TRUE;
 		}
-	} else {
-		if (ch[0] == 9) { //Tab key
-			insert_character(doc, cur, '\t');
+		index++;
+	}
+}
+
+/**
+*** Command key combinations for ChEdit
+*** Returns: 0 - No key combination found
+***          1 - Key combination found but no document edit took place
+***          2 - Key combination found and document edit took place
+**/
+int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
+	if (ch[0] == 27) {
+		if (s_equals(ch, "[D", 1)) {//LEFT
+			decrement_x(cur, FALSE);
+			return 1;
+		} else if (s_equals(ch, "[C", 1)) { //RIGHT
 			increment_x(doc, cur, FALSE);
-		} else if (ch[0] == 8 || ch[0] == 127) { //Backspace
-			erase_character(doc, cur);
-		} else if (ch[0] == '\n' || ch[0] == '\r') {
-			LINE *new_line = crop_line(doc, cur);
-			insert_new_line(doc, cur, new_line);
+			return 1;
+		}else if (s_equals(ch, "[A", 1)) {//UP
+			decrement_y(doc, cur);
+			return 1;
+		} else if (s_equals(ch, "[B", 1)) {//DOWN
 			increment_y(doc, cur);
+			return 1;
+		} else if (s_equals(ch, "[1;5D", 1)) {//CTRL+LEFT
+			decrement_x_word(doc, cur);
+			return 1;
+		} else if (s_equals(ch, "[1;5C", 1)) {//CTRL+RIGHT
+			increment_x_word(doc, cur);
+			return 1;
+		} else if (s_equals(ch, "[1;5A", 1)) {//CTRL+UP
+			decrement_y_para(doc, cur);
+			return 1;
+		} else if (s_equals(ch, "[1;5B", 1)) {//CTRL+DOWN
+			increment_y_para(doc, cur);
+			return 1;
+		} else if (s_equals(ch, "[H", 1)) {//HOME
+			int current_pos = cur->x + cur->horizontal_scroll;
+			seek_line_start(doc, cur);
+			if (current_pos == cur->x + cur->horizontal_scroll) {
+				cur->x = 0;
+				cur->horizontal_scroll = 0;
+			}
+			return 1;
+		} else if (s_equals(ch, "[F", 1)) {//END
+			LINE *line = get_line(doc, cur);
+			if (line->length < cur->max_window_x) {
+				cur->x = line->length;
+			} else {
+				cur->horizontal_scroll = line->length - cur->max_window_x;
+				cur->x = line->length - cur->horizontal_scroll;
+			}
+			return 1;
+		} else if (s_equals(ch, "[5~", 1)) {//PGUP
+			cur->y = 0;
+			cur->vertical_scroll = 0;
 			cur->x = 0;
-		} else if (ch[0] >= 32 && ch[0] <= 126) {
-			insert_character(doc, cur, ch[0]);
-			increment_x(doc, cur, FALSE);
-		} else {
-			return FALSE;
+			cur->horizontal_scroll = 0;
+			return 1;
+		} else if (s_equals(ch, "[6~", 1)) {//PGDN
+			if (doc->length - 1 < cur->max_window_y) {
+				cur->y = doc->length - 1;
+			} else {
+				cur->vertical_scroll = doc->length - cur->max_window_y - 1;
+				cur->y = cur->max_window_y;
+			}
+			seek_line_end(doc, cur);
+			return 1;
+		}else if (s_equals(ch, "[3~", 0)) {//DELETE
+			delete_character(doc, cur);
+			return 2;
 		}
-		return TRUE;
+	} else if (s_equals(ch, "^?", 0)) {//BACKSPACE
+		erase_character(doc, cur);
+		return 2;
+	}
+	//TODO:
+	//SHIFT+ARROWS
+	//SHIFT+TAB - Remove tab from start of line
+	//COPY
+	//CUT
+	//PASTE
+	//CTRL+BACKSPACE
+	return 0;
+}
+
+char process_text(DOCUMENT *doc, CURSOR *cur, char *ch, int length) {
+	if (length != 0 && ch[0] != ERR && ch[0] != 0) {
+		int command_result = process_command(doc, cur, ch);
+		if (command_result == 1) {
+			reset_cursor_highlight(cur);
+		} else if (command_result == 2) {
+			return TRUE;
+		} else {
+			if (ch[0] == '\t') { //TAB
+				insert_character(doc, cur, '\t');
+				increment_x(doc, cur, FALSE);
+			} else if (ch[0] == '\n' || ch[0] == '\r') {//ENTER
+				LINE *new_line = crop_line(doc, cur);
+				insert_new_line(doc, cur, new_line);
+				increment_y(doc, cur);
+				cur->x = 0;
+			} else if (ch[0] >= 32 && ch[0] <= 126) {//A standard printable character
+				insert_character(doc, cur, ch[0]);
+				increment_x(doc, cur, FALSE);
+			} else {
+				return FALSE;
+			}
+			return TRUE;
+		}
 	}
 	return FALSE;
 }
@@ -630,6 +651,9 @@ void draw_line_numbers(WINDOW *window, CURSOR *cur) {
 void goto_line(DOCUMENT *doc, CURSOR *cur) {
 	WINDOW *line_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, LINE_NUMBER_WIDTH);
 	char *chars = (char *) malloc(6 * sizeof(char));
+	for (int i = 0; i < 6; i++) {
+		chars[i] = 0;
+	}
 	int index = 0;
 	wclear(line_win);
 	wstandout(line_win);
@@ -669,21 +693,23 @@ void goto_line(DOCUMENT *doc, CURSOR *cur) {
 		cur->y = line_number - cur->vertical_scroll;
 	}
 	reset_cursor_highlight(cur);
+	free(chars);
 }
 
 int main(int argc, char *argv[]) {
 	char *savefile;
 	char savepath[1024];
 	char unsaved_changes = FALSE;
+	char key_pressed = FALSE;
 
 	struct timespec delay;
 	delay.tv_sec = 0;
-	//delay.tv_nsec = 16300000L;
-	delay.tv_nsec = 65200000L;
+	delay.tv_nsec = 16300000L;
+	//delay.tv_nsec = 65200000L;
 
 	int max_x = 0, max_y = 0, file_length = 0;
 	char ch = -1;
-	char *chars = (char *) malloc(CHARACTER_INPUT_ARR_LENGTH * sizeof(char));
+	char *chars = (char *) malloc((CHARACTER_INPUT_ARR_LENGTH + 1) * sizeof(char));
 	int length = 1;
 	chars[0] = -1;
 
@@ -743,21 +769,26 @@ int main(int argc, char *argv[]) {
 		draw_line_numbers(line_numbers, &cur);
 		wnoutrefresh(line_numbers);
 
-		/*wclear(diag_win);
-		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars[1]);
-		wnoutrefresh(diag_win);*/
+		wclear(diag_win);
+		draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars);
+		wnoutrefresh(diag_win);
 		doupdate();
 
-		length = 0;
+		nanosleep(&delay, NULL);
 
+		length = 0;
 		ch = getch();
+		key_pressed = FALSE;
 		while (ch != -1) {
+			key_pressed = TRUE;
 			if (length < CHARACTER_INPUT_ARR_LENGTH) {
 				chars[length++] = ch;
 			}
 			ch = getch();
 		}
-		nanosleep(&delay, NULL);
+		if (key_pressed) {
+			chars[length] = 0;
+		}
 	}
 
 	endwin();
