@@ -776,6 +776,8 @@ int main(int argc, char *argv[]) {
 				chars[0] = -1;
 			} else if (chars[0] == 4) {
 				show_debug = !show_debug;
+			} else if (s_equals(chars, "\x1B[24~")) {
+				break;
 			}
 		}
 

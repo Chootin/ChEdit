@@ -22,7 +22,7 @@ Home - go to start of line/ first non whitespace character on line
 
 End - go to end of line
 
-CTRL + c - close ChEdit
+F12 - close ChEdit without saving
 
 Line numbers!
 
@@ -39,7 +39,7 @@ Find and Replace
 
 Scroll with scroll wheel
 
-Star indicates if the file has been edited since the last save
+Star next to file path indicates the file has been edited since the last save
 
 # Build Instructions
 Install GCC and Curses
