@@ -12,7 +12,7 @@ CTRL + left/right - go to previous and next whole word
 
 CTRL + up/down - go to previous and next paragraph
 
-ALT + backspace - delete the previous word
+CTRL/ALT + backspace - delete the previous word
 
 PgUp - go to beginning of document
 
