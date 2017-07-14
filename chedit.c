@@ -652,10 +652,10 @@ DOCUMENT * convert_to_document(char *file_buffer, int file_length) {
 	return doc;
 }
 
-void draw_line_numbers(WINDOW *window, CURSOR *cur) {
+void draw_line_numbers(WINDOW *window, CURSOR *cur, int doc_length) {
 	wclear(window);
 	wstandout(window);
-	for (int i = 0; i <= cur->max_window_y; i++) {
+	for (int i = 0; i <= cur->max_window_y && i < doc_length; i++) {
 		mvwprintw(window, i, 0, "%04d", cur->vertical_scroll + i + 1);
 	}
 	wstandend(window);
@@ -763,7 +763,7 @@ int main(int argc, char *argv[]) {
 
 	draw_title_bar(title_bar, max_x, savepath, savefile, unsaved_changes);
 	draw_text(root, doc, &cur);
-	draw_line_numbers(line_numbers, &cur);
+	draw_line_numbers(line_numbers, &cur, doc->length);
 
 	while (1) {
 		if (key_pressed) {
@@ -788,8 +788,8 @@ int main(int argc, char *argv[]) {
 			draw_text(root, doc, &cur);
 		}
 
-		if (text_result == 1) {
-			draw_line_numbers(line_numbers, &cur);
+		if (text_result > 0) {
+			draw_line_numbers(line_numbers, &cur, doc->length);
 		}
 
 		if (show_debug) {
