@@ -4,14 +4,17 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
 #include "chedit.h"
 
-#define DEBUG_LINES (5)
-#define DEBUG_COLUMNS (24)
+#define DEBUG_LINES (6)
+#define DEBUG_COLUMNS (19)
 #define TAB_WIDTH (4)
 #define CHARACTER_INPUT_ARR_LENGTH (6)
 #define LINE_NUMBER_WIDTH (4)
 #define CURSOR_SPEED (25)
+
+volatile int interrupt = 0;
 
 void curses_setup() {
 	initscr();
@@ -20,13 +23,14 @@ void curses_setup() {
 	nodelay(stdscr, true);
 }
 
-void draw_diag_win(WINDOW *diag_win, int max_y, int max_x, int cur_y, int cur_x, char *ch) {
+void draw_diag_win(WINDOW *diag_win, int interrupt, int max_y, int max_x, int cur_y, int cur_x, char *ch) {
 	wclear(diag_win);
 	mvwprintw(diag_win, 0, 0, "Debug");
-	mvwprintw(diag_win, 1, 0, "Width: %d", max_x);
-	mvwprintw(diag_win, 2, 0, "Height: %d", max_y);
-	mvwprintw(diag_win, 3, 0, "X: %d, Y: %d", cur_x, cur_y);
-	mvwprintw(diag_win, 4, 0, "%d %d %d %d %d %d %d", ch[0], ch[1], ch[2], ch[3], ch[4], ch[5], ch[6]);
+	mvwprintw(diag_win, 1, 0, "Interrupt: %d", interrupt);
+	mvwprintw(diag_win, 2, 0, "Width: %d", max_x);
+	mvwprintw(diag_win, 3, 0, "Height: %d", max_y);
+	mvwprintw(diag_win, 4, 0, "X: %d, Y: %d", cur_x, cur_y);
+	mvwprintw(diag_win, 5, 0, "%d %d %d %d %d %d %d", ch[0], ch[1], ch[2], ch[3], ch[4], ch[5], ch[6]);
 	wnoutrefresh(diag_win);
 }
 
@@ -710,6 +714,14 @@ void goto_line(DOCUMENT *doc, CURSOR *cur) {
 	free(chars);
 }
 
+void intHandler(int interr) {
+	interrupt = interr;
+}
+
+void disable_interrupts() {
+	signal(SIGINT, intHandler);
+}
+
 int main(int argc, char *argv[]) {
 	char *savefile;
 	char savepath[1024];
@@ -727,6 +739,8 @@ int main(int argc, char *argv[]) {
 	int length = 1;
 	chars[0] = -1;
 	int ensure_display = 5;
+
+	disable_interrupts();
 
 	getcwd(savepath, 1024);
 
@@ -795,7 +809,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (show_debug) {
-			draw_diag_win(diag_win, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars);
+			draw_diag_win(diag_win, interrupt, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars);
 		}
 		doupdate();
 
