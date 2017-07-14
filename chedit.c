@@ -666,16 +666,93 @@ void draw_line_numbers(WINDOW *window, CURSOR *cur, int doc_length) {
 	wnoutrefresh(window);
 }
 
-void goto_line(DOCUMENT *doc, CURSOR *cur) {
-	WINDOW *line_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, LINE_NUMBER_WIDTH);
-	char *chars = (char *) malloc(6 * sizeof(char));
-	for (int i = 0; i < 6; i++) {
+WINDOW * input_window(DOCUMENT *doc, CURSOR *cur, char *chars, int length) {
+	WINDOW *input_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, LINE_NUMBER_WIDTH);
+	for (int i = 0; i < length; i++) {
 		chars[i] = 0;
 	}
 	int index = 0;
-	wclear(line_win);
-	wstandout(line_win);
-	mvwhline(line_win, 0, 0, ' ', cur->max_window_x);
+	wclear(input_win);
+	wstandout(input_win);
+	mvwhline(input_win, 0, 0, ' ', cur->max_window_x);
+	return input_win;
+}
+
+void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number) {
+	if (line_number > doc->length) {
+		line_number = doc->length - 1;
+	} else if (line_number < 1) {
+		line_number = 1;
+	}
+	if (line_number < doc->length - cur->max_window_y) {
+		cur->y = 0;
+		cur->vertical_scroll = line_number - 1;
+	} else {
+		cur->vertical_scroll = doc->length - cur->max_window_y - 1;
+		cur->y = line_number - cur->vertical_scroll;
+	}
+	reset_cursor_highlight(cur);
+}
+
+void find(DOCUMENT *doc, CURSOR *cur) {
+	int index = 0;
+	char *chars = (char *) malloc(50 * sizeof(char));
+	WINDOW *find_win = input_window(doc, cur, chars, 50);
+	mvwprintw(find_win, 0, 0, " Enter a string: ");
+	wrefresh(find_win);
+	while (TRUE) {
+		char ch = getch();
+		if (ch != '\n') {
+			if (index <= 50 && ch != -1 && ch >= ' ' && ch <= '~') {
+				mvwaddch(find_win, 0, 17 + index, ch);
+				chars[index++] = ch;
+			} else if (ch == 8 || ch == 127) {
+				if (index > 0) {
+					mvwaddch(find_win, 0, 17 + --index, ' ');
+					chars[index] = 0;
+				}
+			}
+			wrefresh(find_win);
+		} else {
+			break;
+		}
+	}
+	wstandend(find_win);
+	int line_pos = 0;
+	int position = 0;
+
+	for (int y = 0; y < doc->length; y++) {
+		line_pos = y;
+		LINE *line = doc->lines[y];
+		int found;
+		for (int x = 0; x < line->length; x++) {
+			found = 1;
+			position = x;
+			for (int i = 0; i < index; i++) {
+				if (line->array[x + i] != chars[i]) {
+					found = 0;
+					break;
+				}
+			}
+			if (found) {
+				break;
+			}
+		} 
+		if (found) {
+			break;
+		}
+	}
+
+	goto_line(doc, cur, line_pos + 1);
+
+	reset_cursor_highlight(cur);
+	free(chars);
+}
+
+void show_goto_line(DOCUMENT *doc, CURSOR *cur) {
+	int index = 0;
+	char *chars = (char *) malloc(6 * sizeof(char));
+	WINDOW *line_win = input_window(doc, cur, chars, 6);
 	mvwprintw(line_win, 0, 0, " GOTO: ");
 	wrefresh(line_win);
 	while (TRUE) {
@@ -698,19 +775,7 @@ void goto_line(DOCUMENT *doc, CURSOR *cur) {
 	wstandend(line_win);
 
 	int line_number = atoi(chars);
-	if (line_number > doc->length) {
-		line_number = doc->length - 1;
-	} else if (line_number < 1) {
-		line_number = 1;
-	}
-	if (line_number < doc->length - cur->max_window_y) {
-		cur->y = 0;
-		cur->vertical_scroll = line_number - 1;
-	} else {
-		cur->vertical_scroll = doc->length - cur->max_window_y - 1;
-		cur->y = line_number - cur->vertical_scroll;
-	}
-	reset_cursor_highlight(cur);
+	goto_line(doc, cur, line_number);
 	free(chars);
 }
 
@@ -728,6 +793,7 @@ int main(int argc, char *argv[]) {
 	char *savefile;
 	char savepath[1024];
 	char unsaved_changes = FALSE;
+	char line_number_redraw = FALSE;
 	char key_pressed = FALSE;
 	char show_debug = FALSE;
 
@@ -782,31 +848,35 @@ int main(int argc, char *argv[]) {
 	draw_line_numbers(line_numbers, &cur, doc->length);
 
 	while (1) {
+		char cursor_redraw = tick_cursor(&cur);
 		if (key_pressed) {
 			if ((chars[0] == 23 || s_equals(chars, "\x1Bs")) && unsaved_changes) { //CTRL+w
 				write_file(directory, doc);
 				unsaved_changes = FALSE;
 				draw_title_bar(title_bar, max_x, savepath, savefile, unsaved_changes);
 			} else if (chars[0] == 7) { //CTRL+g
-				goto_line(doc, &cur);
+				show_goto_line(doc, &cur);
 				chars[0] = -1;
+				line_number_redraw = TRUE;
 			} else if (chars[0] == 4) {
 				show_debug = !show_debug;
 			} else if (s_equals(chars, "\x1B[24~") || s_equals(chars, "\x1B\x1B")) {
 				break;
+			} else if (s_equals(chars, "\x06")) {
+				find(doc, &cur);
+				chars[0] = -1;
+				line_number_redraw = TRUE;
 			}
 		}
 
 		int text_result = process_text(doc, &cur, chars, length);
 		unsaved_changes = text_result == 2 || unsaved_changes;
 
-		char cursor_redraw = tick_cursor(&cur);
-
-		if (cursor_redraw || text_result > 0) {
+		if (cursor_redraw || text_result > 0 || line_number_redraw) {
 			draw_text(root, doc, &cur);
 		}
 
-		if (text_result > 0) {
+		if (text_result > 0 || line_number_redraw) {
 			draw_line_numbers(line_numbers, &cur, doc->length);
 			draw_title_bar(title_bar, max_x, savepath, savefile, unsaved_changes);
 		}
