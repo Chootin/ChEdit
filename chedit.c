@@ -93,7 +93,7 @@ int get_tab_offset(DOCUMENT *doc, CURSOR *cur) {
 void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 	LINE **lines = doc->lines;
 
-	for (int y = 0; y < doc->length - cur->vertical_scroll; y++) {
+	for (int y = 0; y < doc->length - cur->vertical_scroll && y <= cur->max_window_y; y++) {
 		int draw_x = 0;
 		int start_x = 0;
 		int offset = cur->x + get_tab_offset(doc, cur) - cur->max_window_x;
@@ -104,7 +104,7 @@ void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 		if (offset > 0) {
 			start_x += offset;
 		}
-		for (int x = start_x; x < line->length; x++) {
+		for (int x = start_x; x < line->length && draw_x <= cur->max_window_x; x++) {
 			char ch = line->array[x];
 			if (cursor_active_here(cur, y, x)) {
 				wstandout(window);
