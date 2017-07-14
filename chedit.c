@@ -107,9 +107,9 @@ void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 		LINE *line = lines[y + cur->vertical_scroll];
 		if (y == cur->y) {
 			start_x = cur->horizontal_scroll;
-		}
-		if (offset > 0) {
-			start_x += offset;
+			if (offset > 0) {
+				start_x += offset;
+			}
 		}
 		for (int x = start_x; x < line->length && draw_x <= cur->max_window_x; x++) {
 			char ch = line->array[x];
@@ -720,6 +720,8 @@ void intHandler(int interr) {
 
 void disable_interrupts() {
 	signal(SIGINT, intHandler);
+	signal(SIGALRM, intHandler);
+	signal(SIGHUP, intHandler);
 }
 
 int main(int argc, char *argv[]) {
@@ -781,7 +783,7 @@ int main(int argc, char *argv[]) {
 
 	while (1) {
 		if (key_pressed) {
-			if (chars[0] == 23 && unsaved_changes) { //CTRL+w
+			if ((chars[0] == 23 || s_equals(chars, "\x1Bs")) && unsaved_changes) { //CTRL+w
 				write_file(directory, doc);
 				unsaved_changes = FALSE;
 				draw_title_bar(title_bar, max_x, savepath, savefile, unsaved_changes);
@@ -790,7 +792,7 @@ int main(int argc, char *argv[]) {
 				chars[0] = -1;
 			} else if (chars[0] == 4) {
 				show_debug = !show_debug;
-			} else if (s_equals(chars, "\x1B[24~")) {
+			} else if (s_equals(chars, "\x1B[24~") || s_equals(chars, "\x1B\x1B")) {
 				break;
 			}
 		}
@@ -806,6 +808,7 @@ int main(int argc, char *argv[]) {
 
 		if (text_result > 0) {
 			draw_line_numbers(line_numbers, &cur, doc->length);
+			draw_title_bar(title_bar, max_x, savepath, savefile, unsaved_changes);
 		}
 
 		if (show_debug) {

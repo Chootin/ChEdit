@@ -6,7 +6,7 @@
 ChEdit aims to behave like a modern text editor under a terminal.
 
 # Features
-CTRL + w - Save
+CTRL + w/s - Save
 
 CTRL + left/right - go to previous and next whole word
 
@@ -22,7 +22,7 @@ Home - go to start of line/ first non whitespace character on line
 
 End - go to end of line
 
-F12 - close ChEdit without saving
+ALT+ESC or F12 - close ChEdit without saving
 
 Line numbers!
 
