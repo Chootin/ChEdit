@@ -32,7 +32,8 @@ void draw_diag_win(WINDOW *diag_win, int interrupt, int max_y, int max_x, int cu
 	mvwprintw(diag_win, 2, 0, "Width: %d", max_x);
 	mvwprintw(diag_win, 3, 0, "Height: %d", max_y);
 	mvwprintw(diag_win, 4, 0, "X: %d, Y: %d", cur_x, cur_y);
-	mvwprintw(diag_win, 5, 0, "%d %d %d %d %d %d %d", ch[0], ch[1], ch[2], ch[3], ch[4], ch[5], ch[6]);
+	mvwprintw(diag_win, 5, 0, ch);
+	//mvwprintw(diag_win, 5, 0, "%d %d %d %d %d %d %d", ch[0], ch[1], ch[2], ch[3], ch[4], ch[5], ch[6]);
 	wnoutrefresh(diag_win);
 }
 
@@ -67,6 +68,13 @@ char tick_cursor(CURSOR *cur) {
 		return TRUE;
 	}
 	return FALSE;
+}
+
+void reset_selection(CURSOR *cur) {
+	if (cur->selection) {
+		cur->selection = FALSE;
+		cur->select_x = 1;
+	}
 }
 
 char cursor_active_here(CURSOR *cur, int y, int x) {
@@ -183,8 +191,9 @@ void decrement_y(DOCUMENT *doc, CURSOR *cur) {
 		cur->vertical_scroll--;
 	}
 
-	seek_line_end(doc, cur);
+	reset_selection(cur);
 
+	seek_line_end(doc, cur);
 	reset_cursor_highlight(cur);
 }
 
@@ -197,8 +206,9 @@ void increment_y(DOCUMENT *doc, CURSOR *cur) {
 		}
 	}
 
-	seek_line_end(doc, cur);
+	reset_selection(cur);
 
+	seek_line_end(doc, cur);
 	reset_cursor_highlight(cur);
 }
 
@@ -225,12 +235,23 @@ void increment_y_para(DOCUMENT *doc, CURSOR *cur) {
 	increment_y(doc, cur);
 }
 
-void decrement_x(CURSOR *cur, char shift) {
+void shift_x(CURSOR *cur, char enabled) {
+	if (enabled) {
+		cur->select_x++;
+	} else if (cur->selection) {
+		reset_selection(cur);
+	}
+	cur->selection = enabled;
+}
+
+void decrement_x(DOCUMENT *doc, CURSOR *cur, char shift) {
 	if (cur->x > 0) {
 		cur->x--;
 	} else if (cur->horizontal_scroll > 0) {
 		cur->horizontal_scroll--;
 	}
+
+	shift_x(cur, shift);
 
 	reset_cursor_highlight(cur);
 }
@@ -239,10 +260,13 @@ void increment_x(DOCUMENT *doc, CURSOR *cur, char shift) {
 	STRING *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll < line->length) {
-		if (cur->x + get_tab_offset(doc, cur) >= cur->max_window_x) {
-			cur->horizontal_scroll++;
-		} else {
-			cur->x++;
+		shift_x(cur, shift);
+		if (!shift) {
+			if (cur->x + get_tab_offset(doc, cur) >= cur->max_window_x) {
+				cur->horizontal_scroll++;
+			} else {
+				cur->x++;
+			}
 		}
 	}
 
@@ -255,9 +279,9 @@ char get_cursor_char(DOCUMENT *doc, CURSOR *cur) {
 }
 
 void decrement_x_word(DOCUMENT *doc, CURSOR *cur) {
-	decrement_x(cur, FALSE);
+	decrement_x(doc, cur, FALSE);
 	while (cur->x > 0 || cur->horizontal_scroll > 0) {
-		decrement_x(cur, FALSE);
+		decrement_x(doc, cur, FALSE);
 		char ch = get_cursor_char(doc, cur);
 		if (ch == ' ' || ch == '\t') {
 			increment_x(doc, cur, FALSE);
@@ -346,7 +370,8 @@ void erase_character(DOCUMENT *doc, CURSOR *cur) {
 			reset_cursor_highlight(cur);
 		}
 	} else {
-		decrement_x(cur, FALSE);
+
+		decrement_x(doc, cur, FALSE);
 		delete_character(doc, cur);
 	}
 }
@@ -453,7 +478,7 @@ char s_equals(char *input, char *compare) {
 **/
 int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 	if (s_equals(ch, "\x1B[D")) {//LEFT
-		decrement_x(cur, FALSE);
+		decrement_x(doc, cur, FALSE);
 		return 1;
 	} else if (s_equals(ch, "\x1B[C")) { //RIGHT
 		increment_x(doc, cur, FALSE);
@@ -522,6 +547,12 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 		return 1;
 	} else if (s_equals(ch, "\x1B[A\x1B[A")) {//SCROLL UP
 		decrement_y(doc, cur);
+		return 1;
+	} else if (s_equals(ch, "\x1B[1;2D")) {//SHIFT+LEFT
+		decrement_x(doc, cur, TRUE);
+		return 1;
+	} else if (s_equals(ch, "\x1B[1;2C")) {//SHIFT+RIGHT
+		increment_x(doc, cur, TRUE);
 		return 1;
 	}
 	//TODO:
@@ -727,6 +758,8 @@ void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number) {
 		cur->y = line_number - cur->vertical_scroll;
 	}
 	reset_cursor_highlight(cur);
+	cur->x = 0;
+	cur->horizontal_scroll = 0;
 }
 
 char to_lowercase(char ch) {
