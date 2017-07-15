@@ -7,12 +7,14 @@
 #include <signal.h>
 #include "chedit.h"
 
-#define DEBUG_LINES (6)
+#define DEBUG_STRINGS (6)
 #define DEBUG_COLUMNS (19)
 #define TAB_WIDTH (4)
 #define CHARACTER_INPUT_ARR_LENGTH (6)
-#define LINE_NUMBER_WIDTH (4)
+#define STRING_NUMBER_WIDTH (4)
 #define CURSOR_SPEED (25)
+#define FIND_STRING_LENGTH (50)
+#define GOTO_STRING_LENGTH (10)
 
 volatile int interrupt = 0;
 
@@ -39,15 +41,15 @@ void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile, c
 	wstandout(window);
 	mvwhline(window, 0, 0, ' ', max_x);
 	if (unsaved_changes) {
-		mvwprintw(window, 0, LINE_NUMBER_WIDTH, "ChEdit: %s/%s*", savepath, savefile);
+		mvwprintw(window, 0, STRING_NUMBER_WIDTH, "ChEdit: %s/%s*", savepath, savefile);
 	} else {
-		mvwprintw(window, 0, LINE_NUMBER_WIDTH, "ChEdit: %s/%s", savepath, savefile);
+		mvwprintw(window, 0, STRING_NUMBER_WIDTH, "ChEdit: %s/%s", savepath, savefile);
 	}
 	wstandend(window);
 	wnoutrefresh(window);
 }
 
-int get_line_length(LINE *line) {
+int get_line_display_length(STRING *line) {
 	int length = 0;
 	for (int i = 0; i < line->length; i++) {
 		if (line->array[i] == '\t') {
@@ -81,12 +83,12 @@ char cursor_active_here(CURSOR *cur, int y, int x) {
 	return FALSE;
 }
 
-LINE * get_line(DOCUMENT *doc, CURSOR *cur) {
+STRING * get_line(DOCUMENT *doc, CURSOR *cur) {
 	return doc->lines[cur->y + cur->vertical_scroll];
 }
 
 int get_tab_offset(DOCUMENT *doc, CURSOR *cur) {
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 	int tab_offset = 0;
 	for (int x = cur->horizontal_scroll; x < cur->horizontal_scroll + cur->max_window_x; x++) {
 		if (line->array[x] == '\t') {
@@ -98,13 +100,13 @@ int get_tab_offset(DOCUMENT *doc, CURSOR *cur) {
 
 void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 	wclear(window);
-	LINE **lines = doc->lines;
+	STRING **lines = doc->lines;
 
 	for (int y = 0; y < doc->length - cur->vertical_scroll && y <= cur->max_window_y; y++) {
 		int draw_x = 0;
 		int start_x = 0;
 		int offset = cur->x + get_tab_offset(doc, cur) - cur->max_window_x;
-		LINE *line = lines[y + cur->vertical_scroll];
+		STRING *line = lines[y + cur->vertical_scroll];
 		if (y == cur->y) {
 			start_x = cur->horizontal_scroll;
 			if (offset > 0) {
@@ -143,7 +145,7 @@ void reset_cursor_highlight(CURSOR *cur) {
 }
 
 void seek_line_end(DOCUMENT *doc, CURSOR *cur) {
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll > line->length) {
 		if (line->length > cur->max_window_x) {
@@ -162,7 +164,7 @@ void seek_line_end(DOCUMENT *doc, CURSOR *cur) {
 void seek_line_start(DOCUMENT *doc, CURSOR *cur) {
 	cur->x = 0;
 	cur->horizontal_scroll = 0;
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 
 	for (int i = 0; i < line->length; i++) {
 		char ch = line->array[i];
@@ -234,7 +236,7 @@ void decrement_x(CURSOR *cur, char shift) {
 }
 
 void increment_x(DOCUMENT *doc, CURSOR *cur, char shift) {
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll < line->length) {
 		if (cur->x + get_tab_offset(doc, cur) >= cur->max_window_x) {
@@ -248,7 +250,7 @@ void increment_x(DOCUMENT *doc, CURSOR *cur, char shift) {
 }
 
 char get_cursor_char(DOCUMENT *doc, CURSOR *cur) {
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 	return line->array[cur->x + cur->horizontal_scroll];
 }
 
@@ -265,7 +267,7 @@ void decrement_x_word(DOCUMENT *doc, CURSOR *cur) {
 }
 
 void increment_x_word(DOCUMENT *doc, CURSOR *cur) {
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 	while (cur->x + cur->horizontal_scroll < line->length) {
 		increment_x(doc, cur, FALSE);
 		char ch = get_cursor_char(doc, cur);
@@ -288,7 +290,7 @@ void delete_line(DOCUMENT *doc, CURSOR *cur) {
 	}
 }
 
-void append_line(LINE *line, LINE *append) {
+void append_line(STRING *line, STRING *append) {
 	int new_length = line->length + append->length;
 	char *old_array = line->array;
 	char *new_array = (char *) malloc(new_length * sizeof(char));
@@ -307,7 +309,7 @@ void append_line(LINE *line, LINE *append) {
 }
 
 void delete_character(DOCUMENT *doc, CURSOR *cur) {
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 	if (line->length > 0 && cur->x + cur->horizontal_scroll < line->length) {
 		char *array = line->array;
 		for (int i = cur->x + cur->horizontal_scroll; i < line->length; i++) {
@@ -315,8 +317,8 @@ void delete_character(DOCUMENT *doc, CURSOR *cur) {
 		}
 		line->length--;
 	} else if (cur->y + cur->vertical_scroll < doc->length - 1) {
-		LINE *line = get_line(doc, cur);
-		LINE *next_line = doc->lines[cur->y + cur->vertical_scroll + 1];
+		STRING *line = get_line(doc, cur);
+		STRING *next_line = doc->lines[cur->y + cur->vertical_scroll + 1];
 		append_line(line, next_line);
 		cur->y++;
 		delete_line(doc, cur);
@@ -327,8 +329,8 @@ void delete_character(DOCUMENT *doc, CURSOR *cur) {
 void erase_character(DOCUMENT *doc, CURSOR *cur) {
 	if (cur->x + cur->horizontal_scroll == 0) {
 		if (cur->y + cur->vertical_scroll > 0) {
-			LINE *line = get_line(doc, cur);
-			LINE *last_line = doc->lines[cur->y + cur->vertical_scroll - 1];
+			STRING *line = get_line(doc, cur);
+			STRING *last_line = doc->lines[cur->y + cur->vertical_scroll - 1];
 			int new_cur_x = last_line->length;
 			if (line->length > 0) {
 				append_line(last_line, line);
@@ -350,7 +352,7 @@ void erase_character(DOCUMENT *doc, CURSOR *cur) {
 }
 
 void erase_word(DOCUMENT *doc, CURSOR *cur) {
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 	for (int i = cur->x + cur->horizontal_scroll - 1; i > 0; i--) {
 		char ch = line->array[i];
 		if (ch == ' ' || ch == '\t') {
@@ -362,7 +364,7 @@ void erase_word(DOCUMENT *doc, CURSOR *cur) {
 	erase_character(doc, cur);
 }
 
-void increase_line_length(LINE *line, int increase) {
+void increase_line_length(STRING *line, int increase) {
 	char *new_array = (char *) malloc((line->length + increase) * sizeof(char));
 	char *old_array = line->array;
 
@@ -376,7 +378,7 @@ void increase_line_length(LINE *line, int increase) {
 }
 
 void insert_character(DOCUMENT *doc, CURSOR *cur, char ch) {
-	LINE *line = get_line(doc, cur);
+	STRING *line = get_line(doc, cur);
 	increase_line_length(line, 1);
 
 	char *array = line->array;
@@ -388,10 +390,10 @@ void insert_character(DOCUMENT *doc, CURSOR *cur, char ch) {
 	array[cur->x + cur->horizontal_scroll] = ch;
 }
 
-void insert_new_line(DOCUMENT *doc, CURSOR *cur, LINE *line) {
+void insert_new_line(DOCUMENT *doc, CURSOR *cur, STRING *line) {
 	int y = cur->y + cur->vertical_scroll + 1;
-	LINE **old_lines = doc->lines;
-	LINE **new_lines = (LINE **) malloc((doc->length + 1) * sizeof(LINE *));
+	STRING **old_lines = doc->lines;
+	STRING **new_lines = (STRING **) malloc((doc->length + 1) * sizeof(STRING *));
 
 	if (y < doc->length) {
 		int index = 0;
@@ -416,9 +418,9 @@ void insert_new_line(DOCUMENT *doc, CURSOR *cur, LINE *line) {
 	free(old_lines);
 }
 
-LINE * crop_line(DOCUMENT *doc, CURSOR *cur) {
-	LINE *line = get_line(doc, cur);
-	LINE *new_line = (LINE *) malloc(sizeof(LINE));
+STRING * crop_line(DOCUMENT *doc, CURSOR *cur) {
+	STRING *line = get_line(doc, cur);
+	STRING *new_line = (STRING *) malloc(sizeof(STRING));
 	new_line->length = line->length - (cur->x + cur->horizontal_scroll);
 	new_line->array = (char *) malloc(new_line->length * sizeof(char));
 
@@ -483,7 +485,7 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 		}
 		return 1;
 	} else if (s_equals(ch, "\x1BOF") || s_equals(ch, "\x1B[F")) {//END
-		LINE *line = get_line(doc, cur);
+		STRING *line = get_line(doc, cur);
 		if (line->length < cur->max_window_x) {
 			cur->x = line->length;
 		} else {
@@ -545,7 +547,7 @@ int process_text(DOCUMENT *doc, CURSOR *cur, char *ch, int length) {
 				insert_character(doc, cur, '\t');
 				increment_x(doc, cur, FALSE);
 			} else if (ch[0] == '\n' || ch[0] == '\r') {//ENTER
-				LINE *new_line = crop_line(doc, cur);
+				STRING *new_line = crop_line(doc, cur);
 				insert_new_line(doc, cur, new_line);
 				increment_y(doc, cur);
 				cur->x = 0;
@@ -569,7 +571,7 @@ void write_file(char * directory, DOCUMENT *doc) {
 	f = fopen(directory, "a");
 
 	for (int i = 0; i < doc->length; i++) {
-		LINE *line = doc->lines[i];
+		STRING *line = doc->lines[i];
 		for (int x = 0; x < line->length; x++) {
 			char ch = line->array[x];
 			if (ch == 0) {
@@ -623,7 +625,7 @@ DOCUMENT * convert_to_document(char *file_buffer, int file_length) {
 		}
 	}
 
-	LINE **lines = (LINE **) malloc(number_of_lines * sizeof(LINE *));
+	STRING **lines = (STRING **) malloc(number_of_lines * sizeof(STRING *));
 
 	DOCUMENT *doc = (DOCUMENT *) malloc(sizeof(DOCUMENT));
 	doc->lines = lines;
@@ -641,7 +643,7 @@ DOCUMENT * convert_to_document(char *file_buffer, int file_length) {
 			}
 		}
 
-		LINE *line = (LINE *) malloc(sizeof(LINE));
+		STRING *line = (STRING *) malloc(sizeof(STRING));
 		char * line_char = (char *) malloc(line_length * sizeof(char));
 		line->array = line_char;
 		line->length = line_length;
@@ -666,12 +668,15 @@ void draw_line_numbers(WINDOW *window, CURSOR *cur, int doc_length) {
 	wnoutrefresh(window);
 }
 
-WINDOW * input_window(DOCUMENT *doc, CURSOR *cur, char *chars, int length) {
-	WINDOW *input_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, LINE_NUMBER_WIDTH);
-	for (int i = 0; i < length; i++) {
-		chars[i] = 0;
+void s_lower_case(STRING *string) {
+
+}
+
+WINDOW * input_window(DOCUMENT *doc, CURSOR *cur, STRING *input) {
+	WINDOW *input_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, STRING_NUMBER_WIDTH);
+	for (int i = 0; i < input->length; i++) {
+		input->array[i] = 0;
 	}
-	int index = 0;
 	wclear(input_win);
 	wstandout(input_win);
 	mvwhline(input_win, 0, 0, ' ', cur->max_window_x);
@@ -696,8 +701,10 @@ void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number) {
 
 void find(DOCUMENT *doc, CURSOR *cur) {
 	int index = 0;
-	char *chars = (char *) malloc(50 * sizeof(char));
-	WINDOW *find_win = input_window(doc, cur, chars, 50);
+	STRING *input = (STRING *) malloc(sizeof(STRING));
+	input->array = (char *) malloc(50 * sizeof(char));
+	input->length = FIND_STRING_LENGTH;
+	WINDOW *find_win = input_window(doc, cur, input);
 	mvwprintw(find_win, 0, 0, " Enter a string: ");
 	wrefresh(find_win);
 	while (TRUE) {
@@ -705,11 +712,11 @@ void find(DOCUMENT *doc, CURSOR *cur) {
 		if (ch != '\n') {
 			if (index <= 50 && ch != -1 && ch >= ' ' && ch <= '~') {
 				mvwaddch(find_win, 0, 17 + index, ch);
-				chars[index++] = ch;
+				input->array[index++] = ch;
 			} else if (ch == 8 || ch == 127) {
 				if (index > 0) {
 					mvwaddch(find_win, 0, 17 + --index, ' ');
-					chars[index] = 0;
+					input->array[index] = 0;
 				}
 			}
 			wrefresh(find_win);
@@ -720,16 +727,16 @@ void find(DOCUMENT *doc, CURSOR *cur) {
 	wstandend(find_win);
 	int line_pos = 0;
 	int position = 0;
+	int found;
 
 	for (int y = 0; y < doc->length; y++) {
 		line_pos = y;
-		LINE *line = doc->lines[y];
-		int found;
+		STRING *line = doc->lines[y];
 		for (int x = 0; x < line->length; x++) {
 			found = 1;
 			position = x;
 			for (int i = 0; i < index; i++) {
-				if (line->array[x + i] != chars[i]) {
+				if (line->array[x + i] != input->array[i]) {
 					found = 0;
 					break;
 				}
@@ -743,16 +750,21 @@ void find(DOCUMENT *doc, CURSOR *cur) {
 		}
 	}
 
-	goto_line(doc, cur, line_pos + 1);
+	if (found) {
+		goto_line(doc, cur, line_pos + 1);
+	}
 
 	reset_cursor_highlight(cur);
-	free(chars);
+	free(input->array);
+	free(input);
 }
 
 void show_goto_line(DOCUMENT *doc, CURSOR *cur) {
 	int index = 0;
-	char *chars = (char *) malloc(6 * sizeof(char));
-	WINDOW *line_win = input_window(doc, cur, chars, 6);
+	STRING *input = (STRING *) malloc(sizeof(STRING));
+	input->array = (char *) malloc(6 * sizeof(char));
+	input->length = GOTO_STRING_LENGTH;
+	WINDOW *line_win = input_window(doc, cur, input);
 	mvwprintw(line_win, 0, 0, " GOTO: ");
 	wrefresh(line_win);
 	while (TRUE) {
@@ -760,11 +772,11 @@ void show_goto_line(DOCUMENT *doc, CURSOR *cur) {
 		if (ch != '\n') {
 			if (index <= 5 && ch != -1 && ch >= '0' && ch <= '9') {
 				mvwaddch(line_win, 0, 7 + index, ch);
-				chars[index++] = ch;
+				input->array[index++] = ch;
 			} else if (ch == 8 || ch == 127) {
 				if (index > 0) {
 					mvwaddch(line_win, 0, 7 + --index, ' ');
-					chars[index] = 0;
+					input->array[index] = 0;
 				}
 			}
 			wrefresh(line_win);
@@ -774,9 +786,10 @@ void show_goto_line(DOCUMENT *doc, CURSOR *cur) {
 	}
 	wstandend(line_win);
 
-	int line_number = atoi(chars);
+	int line_number = atoi(input->array);
 	goto_line(doc, cur, line_number);
-	free(chars);
+	free(input->array);
+	free(input);
 }
 
 void intHandler(int interr) {
@@ -827,10 +840,10 @@ int main(int argc, char *argv[]) {
 	curses_setup();
 
 	getmaxyx(stdscr, max_y, max_x);
-	WINDOW *root = newwin(max_y, max_x, 1, LINE_NUMBER_WIDTH);
+	WINDOW *root = newwin(max_y, max_x, 1, STRING_NUMBER_WIDTH);
 	WINDOW *title_bar = newwin(1, max_x, 0, 0);
-	WINDOW *line_numbers = newwin(max_y - 1, LINE_NUMBER_WIDTH, 1, 0);
-	WINDOW *diag_win = newwin(DEBUG_LINES, DEBUG_COLUMNS, max_y - DEBUG_LINES, max_x - DEBUG_COLUMNS);
+	WINDOW *line_numbers = newwin(max_y - 1, STRING_NUMBER_WIDTH, 1, 0);
+	WINDOW *diag_win = newwin(DEBUG_STRINGS, DEBUG_COLUMNS, max_y - DEBUG_STRINGS, max_x - DEBUG_COLUMNS);
 
 	clear();
 	refresh();
@@ -839,7 +852,7 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 
-	CURSOR cur = {0, 0, 0, 0, 0, 0, 0, max_y - 2, max_x - 1 - LINE_NUMBER_WIDTH, 1, 0};
+	CURSOR cur = {0, 0, 0, 0, 0, 0, 0, max_y - 2, max_x - 1 - STRING_NUMBER_WIDTH, 1, 0};
 
 	DOCUMENT *doc = convert_to_document(file_buffer, file_length);
 

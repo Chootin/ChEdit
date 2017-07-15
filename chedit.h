@@ -3,10 +3,10 @@
 typedef struct {
         char *array;
         int length;
-} LINE;
+} STRING;
 
 typedef struct {
-        LINE **lines;
+        STRING **lines;
         int length;
 } DOCUMENT;
 
