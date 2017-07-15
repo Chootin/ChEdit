@@ -30,16 +30,16 @@ CTRL + g - move cursor to line number
 
 Scroll UP/DOWN with the mouse/touchpad
 
+CTRL + f - find the next instance after the cursor of text
+
+A star next to the file path indicates there are unsaved changes
+
 # Plans
 Shift + arrow keys to select test
 
 Copy/paste selected text
 
-Find and Replace
-
-Scroll with scroll wheel
-
-Star next to file path indicates the file has been edited since the last save
+Replace
 
 # Build Instructions
 Install GCC and Curses

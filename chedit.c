@@ -668,11 +668,19 @@ void draw_line_numbers(WINDOW *window, CURSOR *cur, int doc_length) {
 	wnoutrefresh(window);
 }
 
-void s_lower_case(STRING *string) {
-
+char is_alpha(char ch) {
+	return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
 }
 
-WINDOW * input_window(DOCUMENT *doc, CURSOR *cur, STRING *input) {
+char is_numeric(char ch) {
+	return ch >= '0' && ch <= '9';
+}
+
+char is_printable(char ch) {
+	return ch >= ' ' && ch <= '~';
+}
+
+void input_window(DOCUMENT *doc, CURSOR *cur, STRING *input, char *explain, int explain_size, char (*input_check)(char)) {
 	WINDOW *input_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, STRING_NUMBER_WIDTH);
 	for (int i = 0; i < input->length; i++) {
 		input->array[i] = 0;
@@ -680,7 +688,29 @@ WINDOW * input_window(DOCUMENT *doc, CURSOR *cur, STRING *input) {
 	wclear(input_win);
 	wstandout(input_win);
 	mvwhline(input_win, 0, 0, ' ', cur->max_window_x);
-	return input_win;
+	mvwprintw(input_win, 0, 0, explain);
+	wrefresh(input_win);
+	int index = 0;
+
+	while (TRUE) {
+		char ch = getch();
+		if (ch != '\n') {
+			if (ch == 8 || ch == 127) {
+				if (index > 0) {
+					mvwaddch(input_win, 0, explain_size + --index, ' ');
+					input->array[index] = 0;
+				}
+			} else if (index <= input->length && ch != -1 && input_check(ch)) {
+				mvwaddch(input_win, 0, explain_size + index, ch);
+				input->array[index++] = ch;
+			}
+			wrefresh(input_win);
+		} else {
+			break;
+		}
+	}
+	wstandend(input_win);
+	input->length = index;
 }
 
 void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number) {
@@ -699,44 +729,31 @@ void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number) {
 	reset_cursor_highlight(cur);
 }
 
-void find(DOCUMENT *doc, CURSOR *cur) {
-	int index = 0;
-	STRING *input = (STRING *) malloc(sizeof(STRING));
-	input->array = (char *) malloc(50 * sizeof(char));
-	input->length = FIND_STRING_LENGTH;
-	WINDOW *find_win = input_window(doc, cur, input);
-	mvwprintw(find_win, 0, 0, " Enter a string: ");
-	wrefresh(find_win);
-	while (TRUE) {
-		char ch = getch();
-		if (ch != '\n') {
-			if (index <= 50 && ch != -1 && ch >= ' ' && ch <= '~') {
-				mvwaddch(find_win, 0, 17 + index, ch);
-				input->array[index++] = ch;
-			} else if (ch == 8 || ch == 127) {
-				if (index > 0) {
-					mvwaddch(find_win, 0, 17 + --index, ' ');
-					input->array[index] = 0;
-				}
-			}
-			wrefresh(find_win);
-		} else {
-			break;
-		}
+char to_lowercase(char ch) {
+	if (ch >= 'A' && ch <= 'Z') {
+		return ch + 32; 
 	}
-	wstandend(find_win);
+	return ch;
+}
+
+void find(DOCUMENT *doc, CURSOR *cur) {
+	STRING *input = (STRING *) malloc(sizeof(STRING));
+	input->array = (char *) malloc(FIND_STRING_LENGTH * sizeof(char));
+	input->length = FIND_STRING_LENGTH;
+	input_window(doc, cur, input, " Enter a search term: ", 22, &is_printable);
+
 	int line_pos = 0;
 	int position = 0;
-	int found;
+	char found = 0;
 
-	for (int y = 0; y < doc->length; y++) {
+	for (int y = cur->y + cur->vertical_scroll + 1; y < doc->length; y++) {
 		line_pos = y;
 		STRING *line = doc->lines[y];
-		for (int x = 0; x < line->length; x++) {
+		for (int x = 0; x < line->length - input->length; x++) {
 			found = 1;
 			position = x;
-			for (int i = 0; i < index; i++) {
-				if (line->array[x + i] != input->array[i]) {
+			for (int i = 0; i < input->length; i++) {
+				if (to_lowercase(line->array[x + i]) != to_lowercase(input->array[i])) {
 					found = 0;
 					break;
 				}
@@ -764,27 +781,7 @@ void show_goto_line(DOCUMENT *doc, CURSOR *cur) {
 	STRING *input = (STRING *) malloc(sizeof(STRING));
 	input->array = (char *) malloc(6 * sizeof(char));
 	input->length = GOTO_STRING_LENGTH;
-	WINDOW *line_win = input_window(doc, cur, input);
-	mvwprintw(line_win, 0, 0, " GOTO: ");
-	wrefresh(line_win);
-	while (TRUE) {
-		char ch = getch();
-		if (ch != '\n') {
-			if (index <= 5 && ch != -1 && ch >= '0' && ch <= '9') {
-				mvwaddch(line_win, 0, 7 + index, ch);
-				input->array[index++] = ch;
-			} else if (ch == 8 || ch == 127) {
-				if (index > 0) {
-					mvwaddch(line_win, 0, 7 + --index, ' ');
-					input->array[index] = 0;
-				}
-			}
-			wrefresh(line_win);
-		} else {
-			break;
-		}
-	}
-	wstandend(line_win);
+	input_window(doc, cur, input, " GOTO: ", 7, &is_numeric);
 
 	int line_number = atoi(input->array);
 	goto_line(doc, cur, line_number);
