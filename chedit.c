@@ -903,7 +903,7 @@ int main(int argc, char *argv[]) {
 				line_number_redraw = TRUE;
 			} else if (chars[0] == 4) {
 				show_debug = !show_debug;
-			} else if (s_equals(chars, "\x1B[24~") || s_equals(chars, "\x1B\x1B")) {
+			} else if (s_equals(chars, "\x1B[24~") || s_equals(chars, "\x1B\x1B") || s_equals(chars, "\x1Bq")) {
 				break;
 			} else if (s_equals(chars, "\x06")) {
 				find(doc, &cur);

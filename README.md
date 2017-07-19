@@ -22,7 +22,7 @@ Home - go to start of line/ first non whitespace character on line
 
 End - go to end of line
 
-ALT+ESC or F12 - close ChEdit without saving
+ALT+ESC, ALT+q or F12 - close ChEdit without saving
 
 Line numbers!
 
