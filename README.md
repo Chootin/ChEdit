@@ -41,6 +41,8 @@ Copy/paste selected text
 
 Replace
 
+Undo/Redo
+
 # Build Instructions
 Install GCC and Curses
 Run ./build.sh
