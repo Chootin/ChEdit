@@ -707,7 +707,11 @@ char is_printable(char ch) {
 	return ch >= ' ' && ch <= '~';
 }
 
-void input_window(DOCUMENT *doc, CURSOR *cur, STRING *input, char *explain, int explain_size, char (*input_check)(char)) {
+char is_esc(char ch) {
+	return ch == '\x1B';
+}
+
+void input_window(CURSOR *cur, STRING *input, char *explain, int explain_size, char (*input_check)(char), char immediate) {
 	WINDOW *input_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, STRING_NUMBER_WIDTH);
 	for (int i = 0; i < input->length; i++) {
 		input->array[i] = 0;
@@ -721,15 +725,23 @@ void input_window(DOCUMENT *doc, CURSOR *cur, STRING *input, char *explain, int 
 
 	while (TRUE) {
 		char ch = getch();
+		/*if (getch() != -1) {//Filter out the command inputs
+			while (getch() != -1) {}
+			continue;
+		}*/
 		if (ch != '\n') {
 			if (ch == 8 || ch == 127) {
 				if (index > 0) {
 					mvwaddch(input_win, 0, explain_size + --index, ' ');
 					input->array[index] = 0;
 				}
-			} else if (index <= input->length && ch != -1 && input_check(ch)) {
+			} else if (index < input->length && ch != -1 && input_check(ch)) {
 				mvwaddch(input_win, 0, explain_size + index, ch);
 				input->array[index++] = ch;
+
+				if (immediate && index == input->length) {
+					break;
+				}
 			}
 			wrefresh(input_win);
 		} else {
@@ -769,35 +781,37 @@ void find(DOCUMENT *doc, CURSOR *cur) {
 	STRING *input = (STRING *) malloc(sizeof(STRING));
 	input->array = (char *) malloc(FIND_STRING_LENGTH * sizeof(char));
 	input->length = FIND_STRING_LENGTH;
-	input_window(doc, cur, input, " Enter a search term: ", 22, &is_printable);
+	input_window(cur, input, " Enter a search term: ", 22, &is_printable, FALSE);
 
-	int line_pos = 0;
-	int position = 0;
-	char found = 0;
-
-	for (int y = cur->y + cur->vertical_scroll + 1; y < doc->length; y++) {
-		line_pos = y;
-		STRING *line = doc->lines[y];
-		for (int x = 0; x < line->length - input->length; x++) {
-			found = 1;
-			position = x;
-			for (int i = 0; i < input->length; i++) {
-				if (to_lowercase(line->array[x + i]) != to_lowercase(input->array[i])) {
-					found = 0;
+	if (input->length != 0) {
+		int line_pos = 0;
+		int position = 0;
+		char found = 0;
+	
+		for (int y = cur->y + cur->vertical_scroll + 1; y < doc->length; y++) {
+			line_pos = y;
+			STRING *line = doc->lines[y];
+				for (int x = 0; x < line->length - input->length; x++) {
+				found = 1;
+				position = x;
+				for (int i = 0; i < input->length; i++) {
+					if (to_lowercase(line->array[x + i]) != to_lowercase(input->array[i])) {
+						found = 0;
+						break;
+					}
+				}
+				if (found) {
 					break;
 				}
-			}
+			} 
 			if (found) {
 				break;
 			}
-		} 
-		if (found) {
-			break;
 		}
-	}
 
-	if (found) {
-		goto_line(doc, cur, line_pos + 1);
+		if (found) {
+			goto_line(doc, cur, line_pos + 1);
+		}
 	}
 
 	reset_cursor_highlight(cur);
@@ -806,16 +820,29 @@ void find(DOCUMENT *doc, CURSOR *cur) {
 }
 
 void show_goto_line(DOCUMENT *doc, CURSOR *cur) {
-	int index = 0;
 	STRING *input = (STRING *) malloc(sizeof(STRING));
 	input->array = (char *) malloc(6 * sizeof(char));
 	input->length = GOTO_STRING_LENGTH;
-	input_window(doc, cur, input, " GOTO: ", 7, &is_numeric);
+	input_window(cur, input, " GOTO: ", 7, &is_numeric, FALSE);
 
 	int line_number = atoi(input->array);
 	goto_line(doc, cur, line_number);
 	free(input->array);
 	free(input);
+}
+
+char show_exit_warning(CURSOR *cur) {
+	STRING *input = (STRING *) malloc(sizeof(STRING));
+	input->array = (char *) malloc(sizeof(char));
+	input->length = 1;
+	input_window(cur, input, " Press ESC again to close, RETURN to cancel...", 46, &is_esc, TRUE);
+
+	char should_exit = input->array[0] == '\x1B';
+
+	free(input->array);
+	free(input);
+
+	return should_exit;
 }
 
 void intHandler(int interr) {
@@ -899,8 +926,10 @@ int main(int argc, char *argv[]) {
 				line_number_redraw = TRUE;
 			} else if (chars[0] == 4) {
 				show_debug = !show_debug;
-			} else if (s_equals(chars, "\x1B[24~") || s_equals(chars, "\x1B\x1B") || s_equals(chars, "\x1Bq")) {
-				break;
+			} else if (s_equals(chars, "\x1B")) {
+				if (show_exit_warning(&cur)) {
+					break;
+				}
 			} else if (s_equals(chars, "\x06")) {
 				find(doc, &cur);
 				chars[0] = -1;

@@ -26,7 +26,7 @@ Home - go to start of line/ first non whitespace character on line
 
 End - go to end of line
 
-ALT+ESC, ALT+q or F12 - close ChEdit without saving
+ESC - close ChEdit without saving. A prompt will appear asking for ESC again for verification
 
 Line numbers!
 
