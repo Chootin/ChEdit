@@ -516,20 +516,18 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 			cur->x = line->length - cur->horizontal_scroll;
 		}
 		return 1;
+	} else if (s_equals(ch, "\x1B[5;5~")) {//CTRL+PGUP
+		goto_line(doc, cur, 0);
+		return 1;
+	} else if (s_equals(ch, "\x1B[6;5~")) {//CTRL+PGDN
+		goto_line(doc, cur, doc->length - 1);
+		seek_line_end(doc, cur);
+		return 1;
 	} else if (s_equals(ch, "\x1B[5~")) {//PGUP
-		cur->y = 0;
-		cur->vertical_scroll = 0;
-		cur->x = 0;
-		cur->horizontal_scroll = 0;
+		goto_line(doc, cur, cur->y + cur->vertical_scroll - cur->max_window_y);
 		return 1;
 	} else if (s_equals(ch, "\x1B[6~")) {//PGDN
-		if (doc->length - 1 < cur->max_window_y) {
-			cur->y = doc->length - 1;
-		} else {
-			cur->vertical_scroll = doc->length - cur->max_window_y - 1;
-			cur->y = cur->max_window_y;
-		}
-		seek_line_end(doc, cur);
+		goto_line(doc, cur, cur->y + cur->vertical_scroll + cur->max_window_y + 2);
 		return 1;
 	} else if (s_equals(ch, "\x1B[3~")) {//DELETE
 		delete_character(doc, cur);
@@ -743,7 +741,7 @@ void input_window(DOCUMENT *doc, CURSOR *cur, STRING *input, char *explain, int 
 }
 
 void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number) {
-	if (line_number > doc->length) {
+	if (line_number >= doc->length) {
 		line_number = doc->length - 1;
 	} else if (line_number < 1) {
 		line_number = 1;

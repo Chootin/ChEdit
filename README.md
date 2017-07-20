@@ -14,9 +14,13 @@ CTRL + up/down - go to previous and next paragraph
 
 CTRL/ALT + backspace - delete the previous word
 
-PgUp - go to beginning of document
+PgUp - move cursor one screen up
 
-PgDown - go to end of document
+PgDn - move cursor one screen down
+
+CTRL + PgUp - go to beginning of document
+
+CTRL + PgDown - go to end of document
 
 Home - go to start of line/ first non whitespace character on line
 

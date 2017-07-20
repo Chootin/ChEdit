@@ -25,5 +25,6 @@ typedef struct {
 } CURSOR;
 
 void increment_x(DOCUMENT *doc, CURSOR *cur, char shift);
+void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number);
 
 #endif
