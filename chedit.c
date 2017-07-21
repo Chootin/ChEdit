@@ -19,7 +19,7 @@ volatile int interrupt = 0;
 void curses_setup() {
 	initscr();
 	noecho();
-	curs_set(0);
+	//curs_set(0);
 	nodelay(stdscr, true);
 }
 
@@ -30,8 +30,8 @@ void draw_diag_win(WINDOW *diag_win, int interrupt, int max_y, int max_x, int cu
 	mvwprintw(diag_win, 2, 0, "Width: %d", max_x);
 	mvwprintw(diag_win, 3, 0, "Height: %d", max_y);
 	mvwprintw(diag_win, 4, 0, "X: %d, Y: %d", cur_x, cur_y);
-	mvwprintw(diag_win, 5, 0, ch);
-	//mvwprintw(diag_win, 5, 0, "%d %d %d %d %d %d %d", ch[0], ch[1], ch[2], ch[3], ch[4], ch[5], ch[6]);
+	//mvwprintw(diag_win, 5, 0, ch);
+	mvwprintw(diag_win, 5, 0, "%d %d %d %d %d %d %d", ch[0], ch[1], ch[2], ch[3], ch[4], ch[5], ch[6]);
 	wnoutrefresh(diag_win);
 }
 
@@ -121,9 +121,9 @@ void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 		}
 		for (int x = start_x; x < line->length && draw_x <= cur->max_window_x; x++) {
 			char ch = line->array[x];
-			if (cursor_active_here(cur, y, x)) {
+			/*if (cursor_active_here(cur, y, x)) {
 				wstandout(window);
-			}
+			}*/
 			if (ch == '\t') {
 				for (int i = 0; i < TAB_WIDTH; i++) {
 					mvwaddch(window, y, draw_x, ' ');
@@ -136,11 +136,11 @@ void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 			wstandend(window);
 		}
 
-		if (cur->highlight && cur->y == y && cur->x + cur->horizontal_scroll == line->length) {
+		/*if (cur->highlight && cur->y == y && cur->x + cur->horizontal_scroll == line->length) {
 			wstandout(window);
 			mvwaddch(window, y, draw_x, ' ');
 			wstandend(window);
-		}
+		}*/
 	}
 	wnoutrefresh(window);
 }
@@ -532,10 +532,10 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 	} else if (s_equals(ch, "\x1B[3~")) {//DELETE
 		delete_character(doc, cur);
 		return 2;
-	} else if (s_equals(ch, "\x1B\x7F") || s_equals(ch, "\x08")) {//CTRL+BACKSPACE
+	} else if (s_equals(ch, "\x7F")) {//CTRL+BACKSPACE
 		erase_word(doc, cur);
 		return 2;
-	} else if (s_equals(ch, "\x7F\x00")) {//BACKSPACE
+	} else if (s_equals(ch, "\x08")) {//BACKSPACE
 		erase_character(doc, cur);
 		return 2;
 	} else if (s_equals(ch, "\x1B[B\x1B[B")) {//SCROLL DOWN
@@ -853,9 +853,9 @@ void intHandler(int interr) {
 }
 
 void disable_interrupts() {
-	signal(SIGINT, intHandler);
-	signal(SIGALRM, intHandler);
-	signal(SIGHUP, intHandler);
+//	signal(SIGINT, intHandler);
+//	signal(SIGALRM, intHandler);
+//	signal(SIGHUP, intHandler);
 }
 
 int main(int argc, char *argv[]) {
@@ -956,12 +956,12 @@ int main(int argc, char *argv[]) {
 			draw_diag_win(diag_win, interrupt, cur.max_window_x, cur.max_window_y, cur.y, cur.x, chars);
 		}
 		doupdate();
+		move(cur.y, cur.x);
 
 		nanosleep(&delay, NULL);
 
 		length = 0;
 		ch = getch();
-		key_pressed = FALSE;
 		while (ch != -1) {
 			key_pressed = TRUE;
 			if (length < CHARACTER_INPUT_ARR_LENGTH) {
