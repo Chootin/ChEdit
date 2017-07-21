@@ -39,6 +39,8 @@ CTRL + f - find the next instance after the cursor of text
 A star next to the file path indicates there are unsaved changes
 
 # Plans
+Add space between the text area and line numbers
+
 Shift + arrow keys to select test
 
 Copy/paste selected text
