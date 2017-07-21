@@ -1,5 +1,5 @@
 CC=gcc
-SOURCES = chedit.c
+SOURCES = string.c cursor.c document.c input.c chedit.c
 BIN = chedit
 CFLAGS=-std=gnu99
 LDFLAGS=-lncurses
