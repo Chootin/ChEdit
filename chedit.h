@@ -1,30 +1,19 @@
 #ifndef chedit_h
+#define chedit_h
 
-typedef struct {
-        char *array;
-        int length;
-} STRING;
+#include <ncurses.h>
+#include "document.h"
+#include "cursor.h"
+#include "input.h"
 
-typedef struct {
-        STRING **lines;
-        int length;
-} DOCUMENT;
+typedef struct DOCUMENT DOCUMENT;
+typedef struct CURSOR CURSOR;
+typedef struct STRING STRING;
 
-typedef struct {
-        int y;
-        int x;
-        int select_y;
-        int select_x;
-        int selection;
-        int vertical_scroll;
-        int horizontal_scroll;
-        int max_window_y;
-        int max_window_x;
-        int highlight;
-        int highlight_tick;
-} CURSOR;
-
-void increment_x(DOCUMENT *doc, CURSOR *cur, char shift);
-void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number);
+void curses_setup();
+void draw_diag_win(WINDOW *diag_win, int interrupt, int max_y, int max_x, int cur_y, int cur_x, char *ch);
+void draw_title_bar(WINDOW *window, int max_x, char *savepath, char *savefile, char unsaved_changes);
+int get_line_display_length(STRING *line);
+void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur);
 
 #endif
