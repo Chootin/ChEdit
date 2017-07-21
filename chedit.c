@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
 			draw_diag_win(diag_win, interrupt, cur.max_window_y, cur.max_window_x, cur.y, cur.x, chars);
 		}
 		doupdate();
-		move(cur.y + 1, cur.x + LINE_NUMBER_WIDTH);
+		move(cur.y + 1, cur.x + get_tab_offset(doc, &cur) + LINE_NUMBER_WIDTH);
 
 		length = 0;
 		nodelay(stdscr, false);

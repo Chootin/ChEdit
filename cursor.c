@@ -162,7 +162,8 @@ void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number) {
 int get_tab_offset(DOCUMENT *doc, CURSOR *cur) {
 	STRING *line = get_line(doc, cur);
 	int tab_offset = 0;
-	for (int x = cur->horizontal_scroll; x < cur->horizontal_scroll + cur->max_window_x; x++) {
+	for (int x = cur->horizontal_scroll; x < cur->horizontal_scroll + cur->max_window_x 
+		&& x < line->length && x < cur->x; x++) {
 		if (line->array[x] == '\t') {
 			tab_offset += TAB_WIDTH - 1;
 		}
