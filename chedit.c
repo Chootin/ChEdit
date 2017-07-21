@@ -755,10 +755,13 @@ void input_window(CURSOR *cur, STRING *input, char *explain, int explain_size, c
 void goto_line(DOCUMENT *doc, CURSOR *cur, int line_number) {
 	if (line_number >= doc->length) {
 		line_number = doc->length - 1;
-	} else if (line_number < 1) {
-		line_number = 1;
+	} else if (line_number < 0) {
+		line_number = 0;
 	}
-	if (line_number < doc->length - cur->max_window_y) {
+	if (doc->length < cur->max_window_y) {
+		cur->y = line_number;
+		cur->vertical_scroll = 0;
+	} else if (line_number < doc->length - cur->max_window_y) {
 		cur->y = 0;
 		cur->vertical_scroll = line_number - 1;
 	} else {
