@@ -11,6 +11,7 @@
 #define CURSOR_SPEED (25)
 #define FIND_STRING_LENGTH (50)
 #define GOTO_STRING_LENGTH (10)
+#define LINE_NUMBER_BREAK (1)
 
 volatile int interrupt = 0;
 
@@ -301,7 +302,7 @@ int main(int argc, char *argv[]) {
 	curses_setup();
 
 	getmaxyx(stdscr, max_y, max_x);
-	WINDOW *text_area = newwin(max_y, max_x, 1, LINE_NUMBER_WIDTH);
+	WINDOW *text_area = newwin(max_y, max_x, 1, LINE_NUMBER_WIDTH + LINE_NUMBER_BREAK);
 	WINDOW *title_bar = newwin(1, max_x, 0, 0);
 	WINDOW *line_numbers = newwin(max_y - 1, LINE_NUMBER_WIDTH, 1, 0);
 	WINDOW *diag_win = newwin(DEBUG_STRINGS, DEBUG_COLUMNS, max_y - DEBUG_STRINGS, max_x - DEBUG_COLUMNS);
@@ -313,7 +314,8 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 
-	CURSOR cur = {0, 0, 0, 0, max_y - 2, max_x - 1 - LINE_NUMBER_WIDTH};
+	CURSOR cur = {0, 0, 0, 0, max_y - 2, max_x - 1
+		- LINE_NUMBER_WIDTH - LINE_NUMBER_BREAK};
 
 	DOCUMENT *doc = text_to_document(file_buffer, file_length);
 
@@ -363,7 +365,8 @@ int main(int argc, char *argv[]) {
 			draw_diag_win(diag_win, interrupt, cur.max_window_y, cur.max_window_x, cur.y, cur.x, chars);
 		}
 		doupdate();
-		move(cur.y + 1, cur.x + get_tab_offset(doc, &cur) + LINE_NUMBER_WIDTH);
+		move(cur.y + 1, LINE_NUMBER_BREAK + cur.x + 
+			get_tab_offset(doc, &cur) + LINE_NUMBER_WIDTH);
 
 		length = 0;
 		nodelay(stdscr, false);
