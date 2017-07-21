@@ -90,7 +90,7 @@ void draw_text(WINDOW *window, DOCUMENT *doc, CURSOR *cur) {
 void write_file(char * directory, DOCUMENT *doc) {
 	FILE *f;
 	f = fopen(directory, "w");
-	fprintf(f, "");
+	fprintf(f, "%s", "");
 	fclose(f);
 	f = fopen(directory, "a");
 
@@ -280,7 +280,6 @@ int main(int argc, char *argv[]) {
 	char *chars = (char *) malloc((CHARACTER_INPUT_ARR_LENGTH + 1) * sizeof(char));
 	int length = 1;
 	chars[0] = -1;
-	int ensure_display = 5;
 
 	disable_interrupts();
 
