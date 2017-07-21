@@ -791,7 +791,7 @@ void find(DOCUMENT *doc, CURSOR *cur) {
 		for (int y = cur->y + cur->vertical_scroll + 1; y < doc->length; y++) {
 			line_pos = y;
 			STRING *line = doc->lines[y];
-				for (int x = 0; x < line->length - input->length; x++) {
+			for (int x = 0; x < line->length - input->length; x++) {
 				found = 1;
 				position = x;
 				for (int i = 0; i < input->length; i++) {
