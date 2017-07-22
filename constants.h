@@ -1,5 +1,5 @@
-#ifndef define_h
-#define define_h
+#ifndef constants_h
+#define constants_h
 
 #define TAB_WIDTH (4)
 

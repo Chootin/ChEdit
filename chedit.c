@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
-#include "define.h"
+#include "constants.h"
 #include "chedit.h"
 
 #define DEBUG_STRINGS (6)

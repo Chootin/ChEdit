@@ -1,5 +1,5 @@
 #include "cursor.h"
-#include "define.h"
+#include "constants.h"
 
 void seek_line_end(DOCUMENT *doc, CURSOR *cur) {
 	STRING *line = get_line(doc, cur);

@@ -1,6 +1,6 @@
 #include "document.h"
 #include <stdlib.h>
-#include "define.h"
+#include "constants.h"
 
 void delete_line(DOCUMENT *doc, CURSOR *cur) {
 	int y = cur->y-- + cur->vertical_scroll;
