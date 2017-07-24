@@ -3,6 +3,7 @@
 #include <signal.h>
 #include "constants.h"
 #include "chedit.h"
+#include <signal.h>
 
 #define DEBUG_STRINGS (6)
 #define DEBUG_COLUMNS (19)
@@ -325,15 +326,15 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		int input_result = process_command(doc, &cur, chars);
 		if (key_pressed) {
-			if ((chars[0] == 23 || s_equals(chars, "\x1Bs")) && unsaved_changes) { //CTRL+w
+			if ((s_equals(chars, "\x17") || s_equals(chars, "\x1Bs")) && unsaved_changes) { //CTRL+w
 				write_file(directory, doc);
 				unsaved_changes = false;
 				draw_title_bar(title_bar, max_x, savepath, savefile, unsaved_changes);
-			} else if (chars[0] == 7) { //CTRL+g
+			} else if (s_equals(chars, "\x07")) { //CTRL+g
 				show_goto_line(doc, &cur);
 				chars[0] = -1;
 				line_number_redraw = true;
-			} else if (chars[0] == 4) {
+			} else if (s_equals(chars, "\x04")) {
 				show_debug = !show_debug;
 			} else if (s_equals(chars, "\x1B")) {
 				if (show_exit_warning(&cur)) {

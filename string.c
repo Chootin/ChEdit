@@ -48,3 +48,13 @@ char to_lowercase(char ch) {
 	}
 	return ch;
 }
+
+char is_empty(STRING *string) {
+	for (int i = 0; i < string->length; i++) {
+		char ch = string->array[i];
+		if (ch != ' ' && ch != '\t' && ch != 0) {
+			return false;
+		}
+	}
+	return true;
+}

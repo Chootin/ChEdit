@@ -12,5 +12,6 @@ void increase_string_length(STRING *string, int increase);
 STRING * crop_string(STRING *string, int n);
 char s_equals(char *input, char *compare);
 char to_lowercase(char ch);
+char is_empty(STRING *string);
 
 #endif

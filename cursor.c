@@ -58,10 +58,10 @@ void increment_y(DOCUMENT *doc, CURSOR *cur) {
 void decrement_y_para(DOCUMENT *doc, CURSOR *cur) {
 	decrement_y(doc, cur);
 	for (int i = cur->y + cur->vertical_scroll - 1; i >= 0; i--) {
-		if (doc->lines[i]->length > 0) {
-			decrement_y(doc, cur);
-		} else {
+		if (is_empty(doc->lines[i])) {
 			break;
+		} else {
+			decrement_y(doc, cur);
 		}
 	}
 }
@@ -69,10 +69,10 @@ void decrement_y_para(DOCUMENT *doc, CURSOR *cur) {
 void increment_y_para(DOCUMENT *doc, CURSOR *cur) {
 	increment_y(doc, cur);
 	for (int i = cur->y + cur->vertical_scroll; i < doc->length; i++) {
-		if (doc->lines[i]->length > 0) {
-			increment_y(doc, cur);
-		} else {
+		if (is_empty(doc->lines[i])) {
 			break;
+		} else {
+			increment_y(doc, cur);
 		}
 	}
 	increment_y(doc, cur);
