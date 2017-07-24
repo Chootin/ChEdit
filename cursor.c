@@ -78,24 +78,18 @@ void increment_y_para(DOCUMENT *doc, CURSOR *cur) {
 	increment_y(doc, cur);
 }
 
-void shift_x(CURSOR *cur, char enabled) {
-}
-
 void decrement_x(DOCUMENT *doc, CURSOR *cur, char shift) {
 	if (cur->x > 0) {
 		cur->x--;
 	} else if (cur->horizontal_scroll > 0) {
 		cur->horizontal_scroll--;
 	}
-
-	shift_x(cur, shift);
 }
 
 void increment_x(DOCUMENT *doc, CURSOR *cur, char shift) {
 	STRING *line = get_line(doc, cur);
 
 	if (cur->x + cur->horizontal_scroll < line->length) {
-		shift_x(cur, shift);
 		if (!shift) {
 			if (cur->x + get_tab_offset(doc, cur) >= cur->max_window_x) {
 				cur->horizontal_scroll++;
