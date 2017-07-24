@@ -151,7 +151,7 @@ void draw_line_numbers(WINDOW *window, CURSOR *cur, int doc_length) {
 }
 
 void input_window(CURSOR *cur, STRING *input, char *explain, int explain_size, char (*input_check)(char), char immediate) {
-	WINDOW *input_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, LINE_NUMBER_WIDTH);
+	WINDOW *input_win = newwin(1, cur->max_window_x, cur->max_window_y + 1, LINE_NUMBER_WIDTH + 1);
 	for (int i = 0; i < input->length; i++) {
 		input->array[i] = 0;
 	}
