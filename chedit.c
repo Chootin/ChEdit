@@ -348,7 +348,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (input_result == 0) {
-			input_result = process_text(doc, &cur, chars, length);
+			input_result = process_text(doc, &cur, chars);
 		}
 		unsaved_changes = input_result == 2 || unsaved_changes;
 

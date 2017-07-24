@@ -96,8 +96,8 @@ int process_command(DOCUMENT *doc, CURSOR *cur, char *ch) {
 	return 0;
 }
 
-int process_text(DOCUMENT *doc, CURSOR *cur, char *ch, int length) {
-	if (length != 0 && ch[0] != ERR && ch[0] != 0) {
+int process_text(DOCUMENT *doc, CURSOR *cur, char *ch) {
+	if (ch[0] != ERR && ch[0] != 0) {
 		if (ch[0] == '\t') { //TAB
 			insert_character(doc, cur, '\t');
 			increment_x(doc, cur, false);
