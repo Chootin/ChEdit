@@ -15,7 +15,24 @@ void increase_string_length(STRING *string, int increase) {
 	free(old_array);
 }
 
-//was cur->x + cur->horizontal_scroll
+void append_string(STRING *line, STRING *append) {
+	int new_length = line->length + append->length;
+	char *old_array = line->array;
+	char *new_array = (char *) malloc(new_length * sizeof(char));
+
+	for (int i = 0; i < line->length; i++) {
+		new_array[i] = old_array[i];
+	}
+
+	for (int i = 0; i < append->length; i++) {
+		new_array[i + line->length] = append->array[i];
+	}
+
+	line->length = new_length;
+	free(old_array);
+	line->array = new_array;
+}
+
 STRING * crop_string(STRING *string, int n) {
 	STRING *new_string = (STRING *) malloc(sizeof(STRING));
 	new_string->length = string->length - n;

@@ -14,24 +14,6 @@ void delete_line(DOCUMENT *doc, CURSOR *cur) {
 	}
 }
 
-void append_line(STRING *line, STRING *append) {
-	int new_length = line->length + append->length;
-	char *old_array = line->array;
-	char *new_array = (char *) malloc(new_length * sizeof(char));
-
-	for (int i = 0; i < line->length; i++) {
-		new_array[i] = old_array[i];
-	}
-
-	for (int i = 0; i < append->length; i++) {
-		new_array[i + line->length] = append->array[i];
-	}
-
-	line->length = new_length;
-	free(old_array);
-	line->array = new_array;
-}
-
 void delete_character(DOCUMENT *doc, CURSOR *cur) {
 	STRING *line = get_line(doc, cur);
 	if (line->length > 0 && cur->x + cur->horizontal_scroll < line->length) {
@@ -43,7 +25,7 @@ void delete_character(DOCUMENT *doc, CURSOR *cur) {
 	} else if (cur->y + cur->vertical_scroll < doc->length - 1) {
 		STRING *line = get_line(doc, cur);
 		STRING *next_line = doc->lines[cur->y + cur->vertical_scroll + 1];
-		append_line(line, next_line);
+		append_string(line, next_line);
 		cur->y++;
 		delete_line(doc, cur);
 	}
@@ -56,7 +38,7 @@ void erase_character(DOCUMENT *doc, CURSOR *cur) {
 			STRING *last_line = doc->lines[cur->y + cur->vertical_scroll - 1];
 			int new_cur_x = last_line->length;
 			if (line->length > 0) {
-				append_line(last_line, line);
+				append_string(last_line, line);
 			}
 			delete_line(doc, cur);
 			if (new_cur_x > cur->max_window_x) {

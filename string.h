@@ -19,6 +19,11 @@ void increase_string_length(STRING *string, int increase);
 STRING * crop_string(STRING *string, int n);
 
 /**
+* Append the content of string - append to the string - line. Append will be deleted.
+**/
+void append_string(STRING *line, STRING *append);
+
+/**
 * Returns true if the input and compare arrays are equal.
 **/
 char s_equals(char *input, char *compare);
