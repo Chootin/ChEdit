@@ -333,6 +333,7 @@ int main(int argc, char *argv[]) {
 			} else if (s_equals(chars, "\x07")) { //CTRL+g
 				show_goto_line(doc, &cur);
 				chars[0] = -1;
+				input_result = 1;
 				line_number_redraw = true;
 			} else if (s_equals(chars, "\x04")) {
 				show_debug = !show_debug;
@@ -344,6 +345,7 @@ int main(int argc, char *argv[]) {
 				find(doc, &cur);
 				chars[0] = -1;
 				line_number_redraw = true;
+				input_result = 1;
 			}
 		}
 
