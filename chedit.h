@@ -1,7 +1,6 @@
 #ifndef chedit_h
 #define chedit_h
 
-#include <ncurses.h>
 #include "document.h"
 #include "cursor.h"
 #include "input.h"

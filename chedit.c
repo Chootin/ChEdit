@@ -1,6 +1,6 @@
+#include <ncurses.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <signal.h>
 #include "constants.h"
 #include "chedit.h"
 #include <signal.h>

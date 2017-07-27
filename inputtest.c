@@ -1,6 +1,9 @@
+#include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <termios.h>
 #include <string.h>
+#include <ncurses.h>
 
 int getkey() {
         int character;
@@ -26,11 +29,19 @@ int getkey() {
 }
 
 int main(int argc, char *argv[]) {
+	char flip = 0;
 	int ch;
+	noecho();
 	while (1) {
-		do {
+		if (flip) {
 			ch = getkey();
-		} while (ch == -1);
+		} else {
+			ch = getchar();
+		}
+
+		if (ch != -1) {
+			flip = !flip;
+		}
 		
 		printf("%d        %c\n", ch ,ch);
 	}
